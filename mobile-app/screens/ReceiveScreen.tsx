@@ -66,13 +66,6 @@ export const ReceiveScreen: React.FC<ReceiveScreenProps> = ({ navigation }) => {
             }
             disabled={amountNGN === 0 || !wallet}
           />
-        <Button
-          title="Receive via Bluetooth"
-          variant="outline"
-          onPress={() => navigation.navigate('NFCPayment', { amount, amountUSDC })}
-          disabled={amountNGN === 0}
-          icon={<Ionicons name="bluetooth" size={20} color={colors.primary} />}
-        />
         </View>
       </ScrollView>
     </SafeAreaView>

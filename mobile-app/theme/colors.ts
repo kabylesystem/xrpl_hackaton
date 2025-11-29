@@ -30,9 +30,9 @@ export type ColorPalette = {
 
 export const lightColors: ColorPalette = {
   // Primary
-  primary: '#2F80ED',
-  primaryDark: '#2570D8',
-  primaryLight: '#5A9BF2',
+  primary: '#008850',
+  primaryDark: '#006B3D',
+  primaryLight: '#00A563',
 
   // Secondary
   secondary: '#27AE60',
@@ -56,29 +56,29 @@ export const lightColors: ColorPalette = {
   success: '#27AE60',
   error: '#EB5757',
   warning: '#F2994A',
-  info: '#2F80ED',
+  info: '#008850',
 
   // Borders
   border: '#E5E5E5',
   borderDark: '#333333',
 
   // Gradients
-  gradientStart: '#2F80ED',
-  gradientEnd: '#1E5BB8',
+  gradientStart: '#008850',
+  gradientEnd: '#006B3D',
 
   // Overlay
   overlay: 'rgba(0, 0, 0, 0.5)',
   overlayLight: 'rgba(0, 0, 0, 0.3)',
 
   // NFC/QR specific
-  nfcBlue: '#2F80ED',
+  nfcBlue: '#008850',
   qrGreen: '#27AE60',
 };
 
 export const darkColors: ColorPalette = {
-  primary: '#5A9BF2',
-  primaryDark: '#2570D8',
-  primaryLight: '#7CB3FF',
+  primary: '#00A563',
+  primaryDark: '#008850',
+  primaryLight: '#00C277',
   secondary: '#4FC57A',
   secondaryDark: '#27AE60',
   secondaryLight: '#7CE3A0',
@@ -94,14 +94,14 @@ export const darkColors: ColorPalette = {
   success: '#4FC57A',
   error: '#F66',
   warning: '#F5A524',
-  info: '#5A9BF2',
+  info: '#00A563',
   border: '#2A2F38',
   borderDark: '#1E1E1E',
-  gradientStart: '#1E5BB8',
-  gradientEnd: '#0F2F70',
+  gradientStart: '#00A563',
+  gradientEnd: '#006B3D',
   overlay: 'rgba(0, 0, 0, 0.7)',
   overlayLight: 'rgba(0, 0, 0, 0.5)',
-  nfcBlue: '#5A9BF2',
+  nfcBlue: '#00A563',
   qrGreen: '#4FC57A',
 };
 

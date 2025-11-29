@@ -191,7 +191,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     cta: {
       marginTop: spacing.lg,
-      width: width - spacing.xl * 2,
+      width: '100%',
     },
     skip: {
       marginTop: spacing.sm,
