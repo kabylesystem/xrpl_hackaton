@@ -2,13 +2,13 @@ import { Client, Wallet, xrpToDrops, dropsToXrp } from 'xrpl';
 
 const TESTNET_URL = 'wss://s.altnet.rippletest.net:51233';
 
-export const connectToXRPL = async () => {
+export const connectToXRPL = async (): Promise<Client> => {
   const client = new Client(TESTNET_URL);
   await client.connect();
   return client;
 };
 
-export const createWallet = async (client) => {
+export const createWallet = async (client: Client): Promise<Wallet> => {
   const wallet = Wallet.generate();
 
   // Fund wallet on testnet
@@ -21,7 +21,7 @@ export const createWallet = async (client) => {
   return wallet;
 };
 
-export const getBalance = async (client, address) => {
+export const getBalance = async (client: Client, address: string): Promise<string> => {
   try {
     const response = await client.request({
       command: 'account_info',
@@ -35,7 +35,12 @@ export const getBalance = async (client, address) => {
   }
 };
 
-export const sendPayment = async (client, wallet, destination, amount) => {
+export const sendPayment = async (
+  client: Client,
+  wallet: Wallet,
+  destination: string,
+  amount: string
+): Promise<any> => {
   const payment = {
     TransactionType: 'Payment',
     Account: wallet.address,
@@ -54,7 +59,7 @@ export const sendPayment = async (client, wallet, destination, amount) => {
   }
 };
 
-export const disconnectFromXRPL = async (client) => {
+export const disconnectFromXRPL = async (client: Client | null): Promise<void> => {
   if (client && client.isConnected()) {
     await client.disconnect();
   }

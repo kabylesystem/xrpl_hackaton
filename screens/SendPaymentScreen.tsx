@@ -11,13 +11,24 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { sendPayment, getBalance } from '../utils/xrpl';
+import { Client, Wallet } from 'xrpl';
+import { sendPayment } from '../utils/xrpl';
 
-export default function SendPaymentScreen({ route, navigation }) {
+interface SendPaymentScreenProps {
+  route: {
+    params: {
+      wallet: Wallet;
+      client: Client;
+    };
+  };
+  navigation: any;
+}
+
+export default function SendPaymentScreen({ route, navigation }: SendPaymentScreenProps) {
   const { wallet, client } = route.params;
-  const [destination, setDestination] = useState('');
-  const [amount, setAmount] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [destination, setDestination] = useState<string>('');
+  const [amount, setAmount] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
 
   const handleSendPayment = async () => {
     if (!destination || !amount) {
@@ -54,7 +65,7 @@ export default function SendPaymentScreen({ route, navigation }) {
         Alert.alert('Error', 'Transaction failed');
       }
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to send payment');
+      Alert.alert('Error', (error as Error).message || 'Failed to send payment');
       console.error(error);
     }
     setLoading(false);

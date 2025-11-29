@@ -8,14 +8,19 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
+import { Client, Wallet } from 'xrpl';
 import { connectToXRPL, createWallet, getBalance, disconnectFromXRPL } from '../utils/xrpl';
 
-export default function HomeScreen({ navigation }) {
-  const [client, setClient] = useState(null);
-  const [wallet, setWallet] = useState(null);
-  const [balance, setBalance] = useState('0');
-  const [loading, setLoading] = useState(false);
-  const [connected, setConnected] = useState(false);
+interface HomeScreenProps {
+  navigation: any;
+}
+
+export default function HomeScreen({ navigation }: HomeScreenProps) {
+  const [client, setClient] = useState<Client | null>(null);
+  const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [balance, setBalance] = useState<string>('0');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [connected, setConnected] = useState<boolean>(false);
 
   useEffect(() => {
     return () => {
