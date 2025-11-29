@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Button } from '../components';
-import { typography, spacing, borderRadius, shadows } from '../theme';
-import { useThemedColors } from '../context/ThemeContext';
+import React, { useMemo, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { Ionicons } from "@expo/vector-icons";
+import { Button } from "../components";
+import { typography, spacing, borderRadius, shadows } from "../theme";
+import { useThemedColors } from "../context/ThemeContext";
 
 interface QRPaymentScreenProps {
   navigation: any;
@@ -17,9 +18,38 @@ interface QRPaymentScreenProps {
 
 export const QRPaymentScreen: React.FC<QRPaymentScreenProps> = ({ navigation, route }) => {
   const [scanned, setScanned] = useState(false);
-  const amount = route.params?.amount || '0';
-  const amountUSDC = route.params?.amountUSDC || '0.00';
-  const destination = 'rQrcodeMerchantAddress';
+  const [permission, requestPermission] = useCameraPermissions();
+  const [scannedData, setScannedData] = useState<{ address: string; amount?: string } | null>(null);
+
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    if (scanned) return;
+
+    let address = "";
+    let amount = "";
+
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed.walletAddress) {
+        address = parsed.walletAddress;
+        amount = parsed.amountOfToken;
+      }
+    } catch (e) {
+      // Not JSON
+    }
+
+    if (!address && data.startsWith("r")) {
+      address = data;
+    }
+
+    if (address) {
+      setScannedData({ address, amount });
+      setScanned(true);
+    }
+  };
+
+  const amount = scannedData?.amount || route.params?.amount || "0";
+  const amountUSDC = route.params?.amountUSDC || "0.00";
+  const destination = scannedData?.address || "rQrcodeMerchantAddress";
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -34,21 +64,39 @@ export const QRPaymentScreen: React.FC<QRPaymentScreenProps> = ({ navigation, ro
         </View>
 
         <View style={styles.card}>
-          <View style={styles.qrPlaceholder}>
-            <Ionicons name="qr-code-outline" size={96} color={colors.primary} />
+          <View style={[styles.qrPlaceholder, { overflow: "hidden" }]}>
+            {!scanned && permission?.granted ? (
+              <CameraView
+                style={StyleSheet.absoluteFill}
+                onBarcodeScanned={handleBarCodeScanned}
+                barcodeScannerSettings={{
+                  barcodeTypes: ["qr"],
+                }}
+              />
+            ) : (
+              <>
+                <Ionicons name={scanned ? "checkmark-circle" : "qr-code-outline"} size={96} color={colors.primary} />
+                {!scanned && !permission?.granted && (
+                  <Button
+                    title="Allow Camera"
+                    onPress={requestPermission}
+                    variant="outline"
+                    style={{ marginTop: 10, height: 40, paddingVertical: 0 }}
+                  />
+                )}
+              </>
+            )}
           </View>
-          <Text style={styles.helper}>
-            Point the camera at a merchant QR. We will read the destination address and amount.
-          </Text>
+          <Text style={styles.helper}>Point the camera at a merchant QR. We will read the destination address and amount.</Text>
 
           {scanned ? (
             <View style={styles.meta}>
-              <Text style={styles.amount}>{amount || '0'} NGN</Text>
+              <Text style={styles.amount}>{amount || "0"} NGN</Text>
               <Text style={styles.helper}>≈ {amountUSDC} USDC</Text>
               <Text style={styles.address} numberOfLines={1}>
                 {destination}
               </Text>
-              <Button title="Confirm payment" onPress={() => navigation.navigate('Home')} />
+              <Button title="Confirm payment" onPress={() => navigation.navigate("Home")} />
             </View>
           ) : (
             <Button title="Simulate scan" onPress={() => setScanned(true)} />
@@ -75,8 +123,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: spacing.lg,
     },
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.md,
     },
     iconButton: {
@@ -84,8 +132,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 42,
       borderRadius: 21,
       backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       ...shadows.sm,
     },
     title: {
@@ -99,7 +147,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       padding: spacing.lg,
       ...shadows.md,
       gap: spacing.md,
-      alignItems: 'center',
+      alignItems: "center",
     },
     qrPlaceholder: {
       width: 240,
@@ -107,18 +155,18 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       borderRadius: borderRadius.xl,
       borderWidth: 2,
       borderColor: colors.border,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       backgroundColor: colors.background,
     },
     helper: {
       ...typography.caption,
       color: colors.textSecondary,
-      textAlign: 'center',
+      textAlign: "center",
     },
     meta: {
-      width: '100%',
-      alignItems: 'center',
+      width: "100%",
+      alignItems: "center",
       gap: spacing.xs,
     },
     amount: {
