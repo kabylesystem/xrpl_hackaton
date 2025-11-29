@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, NFCAnimation } from '../components';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { typography, spacing, borderRadius, shadows } from '../theme';
 import { useWallet } from '../context/WalletContext';
+import { useThemedColors } from '../context/ThemeContext';
 
 interface NFCPaymentScreenProps {
   navigation: any;
@@ -23,6 +24,8 @@ export const NFCPaymentScreen: React.FC<NFCPaymentScreenProps> = ({ navigation, 
   const amount = route.params?.amount || '0';
   const amountUSDC = route.params?.amountUSDC || '0.00';
   const merchant = { name: 'Café MamaKoko', address: 'rNxxx...7y9z' };
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   useEffect(() => {
     if (stage === 'scanning') {
@@ -96,86 +99,87 @@ export const NFCPaymentScreen: React.FC<NFCPaymentScreenProps> = ({ navigation, 
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: spacing.lg,
-    gap: spacing.lg,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  screenTitle: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  centerContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-  },
-  title: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  helper: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  card: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.xxl,
-    padding: spacing.lg,
-    ...shadows.md,
-    gap: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardTitle: {
-    ...typography.bodyBold,
-    color: colors.textPrimary,
-  },
-  amountBox: {
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  amount: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  converted: {
-    ...typography.bodyBold,
-    color: colors.primary,
-  },
-  meta: {
-    gap: 4,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      padding: spacing.lg,
+      gap: spacing.lg,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    iconButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...shadows.sm,
+    },
+    screenTitle: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    centerContent: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.md,
+    },
+    title: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    helper: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    card: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.xxl,
+      padding: spacing.lg,
+      ...shadows.md,
+      gap: spacing.md,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    iconCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cardTitle: {
+      ...typography.bodyBold,
+      color: colors.textPrimary,
+    },
+    amountBox: {
+      padding: spacing.md,
+      borderRadius: borderRadius.lg,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    amount: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    converted: {
+      ...typography.bodyBold,
+      color: colors.primary,
+    },
+    meta: {
+      gap: 4,
+    },
+  });

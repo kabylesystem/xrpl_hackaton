@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { typography, spacing, borderRadius, shadows } from '../theme';
 import { Button, Keypad } from '../components';
 import { useWallet } from '../context/WalletContext';
+import { useThemedColors } from '../context/ThemeContext';
 
 interface ReceiveScreenProps {
   navigation: any;
@@ -13,6 +14,8 @@ export const ReceiveScreen: React.FC<ReceiveScreenProps> = ({ navigation }) => {
   const [amount, setAmount] = useState('');
   const { wallet } = useWallet();
   const rate = 1600;
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const amountNGN = Number.parseFloat(amount) || 0;
   const amountUSDC = useMemo(() => (amountNGN / rate).toFixed(2), [amountNGN, rate]);
@@ -74,55 +77,56 @@ export const ReceiveScreen: React.FC<ReceiveScreenProps> = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.lg,
-    gap: spacing.lg,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  title: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  amountBox: {
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-  },
-  helper: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  amount: {
-    ...typography.h1,
-    color: colors.textPrimary,
-  },
-  amountSuffix: {
-    ...typography.h3,
-    color: colors.textSecondary,
-  },
-  converted: {
-    ...typography.h3,
-    color: colors.secondary,
-  },
-  actions: {
-    gap: spacing.md,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: spacing.lg,
+      gap: spacing.lg,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    iconButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...shadows.sm,
+    },
+    title: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    amountBox: {
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.md,
+    },
+    helper: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    amount: {
+      ...typography.h1,
+      color: colors.textPrimary,
+    },
+    amountSuffix: {
+      ...typography.h3,
+      color: colors.textSecondary,
+    },
+    converted: {
+      ...typography.h3,
+      color: colors.secondary,
+    },
+    actions: {
+      gap: spacing.md,
+    },
+  });

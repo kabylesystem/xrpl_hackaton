@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { typography, spacing, borderRadius, shadows } from '../theme';
 import { Button } from '../components';
+import { useThemedColors } from '../context/ThemeContext';
 
 interface SMSPaymentScreenProps {
   navigation: any;
@@ -15,6 +16,8 @@ interface SMSPaymentScreenProps {
 
 export const SMSPaymentScreen: React.FC<SMSPaymentScreenProps> = ({ navigation, route }) => {
   const amount = route.params?.amount || '0';
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const smsText = `PAY ${amount || '1200'}`;
 
@@ -52,63 +55,64 @@ export const SMSPaymentScreen: React.FC<SMSPaymentScreenProps> = ({ navigation, 
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: spacing.lg,
-    gap: spacing.lg,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  title: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.xxl,
-    padding: spacing.lg,
-    ...shadows.md,
-    gap: spacing.md,
-  },
-  helper: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  description: {
-    ...typography.body,
-    color: colors.textPrimary,
-  },
-  smsBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    backgroundColor: `${colors.primary}12`,
-  },
-  smsText: {
-    ...typography.bodyBold,
-    color: colors.textPrimary,
-  },
-  steps: {
-    gap: spacing.xs,
-  },
-  step: {
-    ...typography.caption,
-    color: colors.textPrimary,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      padding: spacing.lg,
+      gap: spacing.lg,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    iconButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...shadows.sm,
+    },
+    title: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.xxl,
+      padding: spacing.lg,
+      ...shadows.md,
+      gap: spacing.md,
+    },
+    helper: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    description: {
+      ...typography.body,
+      color: colors.textPrimary,
+    },
+    smsBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      padding: spacing.md,
+      borderRadius: borderRadius.lg,
+      backgroundColor: `${colors.primary}12`,
+    },
+    smsText: {
+      ...typography.bodyBold,
+      color: colors.textPrimary,
+    },
+    steps: {
+      gap: spacing.xs,
+    },
+    step: {
+      ...typography.caption,
+      color: colors.textPrimary,
+    },
+  });

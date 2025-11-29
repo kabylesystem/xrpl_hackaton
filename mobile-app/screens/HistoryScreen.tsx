@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TransactionListItem } from '../components';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { typography, spacing, borderRadius, shadows } from '../theme';
+import { useThemedColors } from '../context/ThemeContext';
 
 interface HistoryScreenProps {
   navigation: any;
@@ -16,6 +17,8 @@ const historyItems = [
 ];
 
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
@@ -41,38 +44,39 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.lg,
-    gap: spacing.lg,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  title: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.xxl,
-    padding: spacing.md,
-    ...shadows.md,
-    gap: spacing.sm,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: spacing.lg,
+      gap: spacing.lg,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    iconButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...shadows.sm,
+    },
+    title: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.xxl,
+      padding: spacing.md,
+      ...shadows.md,
+      gap: spacing.sm,
+    },
+  });

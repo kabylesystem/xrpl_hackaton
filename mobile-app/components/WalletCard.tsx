@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { typography, spacing, borderRadius, shadows } from '../theme';
+import { useThemedColors } from '../context/ThemeContext';
 
 interface WalletCardProps {
   balance: string;
@@ -19,6 +20,8 @@ export const WalletCard: React.FC<WalletCardProps> = ({
   currencyLabel = 'USDC',
   convertedLabel = 'NGN',
 }) => {
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <LinearGradient
       colors={[colors.gradientStart, colors.gradientEnd]}
@@ -52,59 +55,60 @@ export const WalletCard: React.FC<WalletCardProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    borderRadius: borderRadius.xxl,
-    padding: spacing.lg,
-    ...shadows.xl,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  circle1: {
-    position: 'absolute',
-    top: -48,
-    right: -48,
-    width: 128,
-    height: 128,
-    borderRadius: 64,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  circle2: {
-    position: 'absolute',
-    bottom: -32,
-    left: -32,
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  content: {
-    zIndex: 10,
-  },
-  label: {
-    ...typography.small,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  usdcBalance: {
-    ...typography.h1,
-    color: colors.textWhite,
-    marginTop: spacing.sm,
-  },
-  ngnRow: {
-    marginTop: spacing.xs,
-  },
-  ngnEquivalent: {
-    ...typography.h2,
-    color: 'rgba(255, 255, 255, 0.9)',
-  },
-  rateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: spacing.md,
-  },
-  rateText: {
-    ...typography.small,
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      borderRadius: borderRadius.xxl,
+      padding: spacing.lg,
+      ...shadows.xl,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    circle1: {
+      position: 'absolute',
+      top: -48,
+      right: -48,
+      width: 128,
+      height: 128,
+      borderRadius: 64,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    circle2: {
+      position: 'absolute',
+      bottom: -32,
+      left: -32,
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    },
+    content: {
+      zIndex: 10,
+    },
+    label: {
+      ...typography.small,
+      color: 'rgba(255, 255, 255, 0.8)',
+    },
+    usdcBalance: {
+      ...typography.h1,
+      color: colors.textWhite,
+      marginTop: spacing.sm,
+    },
+    ngnRow: {
+      marginTop: spacing.xs,
+    },
+    ngnEquivalent: {
+      ...typography.h2,
+      color: 'rgba(255, 255, 255, 0.9)',
+    },
+    rateRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: spacing.md,
+    },
+    rateText: {
+      ...typography.small,
+      color: 'rgba(255, 255, 255, 0.7)',
+    },
+  });

@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing } from '../theme';
+import { spacing } from '../theme';
+import { useThemedColors } from '../context/ThemeContext';
 
 interface NFCAnimationProps {
   isActive: boolean;
@@ -12,6 +13,8 @@ export const NFCAnimation: React.FC<NFCAnimationProps> = ({
   isActive,
   size = 120,
 }) => {
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
@@ -112,19 +115,20 @@ export const NFCAnimation: React.FC<NFCAnimationProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  pulseCircle: {
-    position: 'absolute',
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+    },
+    pulseCircle: {
+      position: 'absolute',
+      borderWidth: 2,
+      borderColor: colors.primary,
+    },
+    iconContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });

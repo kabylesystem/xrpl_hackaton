@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { typography, spacing, borderRadius, shadows } from '../theme';
 import { Button } from '../components';
 import { useWallet } from '../context/WalletContext';
+import { useThemedColors } from '../context/ThemeContext';
 
 interface WalletSetupScreenProps {
   navigation: any;
@@ -12,6 +13,8 @@ interface WalletSetupScreenProps {
 export const WalletSetupScreen: React.FC<WalletSetupScreenProps> = ({ navigation }) => {
   const { connected, wallet, balance, statusMessage, loading, connect, setupWallet, refreshBalance } =
     useWallet();
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const canContinue = connected && !!wallet;
 
@@ -122,113 +125,114 @@ export const WalletSetupScreen: React.FC<WalletSetupScreenProps> = ({ navigation
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.lg,
-    gap: spacing.lg,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  badge: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  title: {
-    ...typography.h1,
-    color: colors.textPrimary,
-    marginTop: spacing.xs,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  skip: {
-    ...typography.bodyBold,
-    color: colors.primary,
-  },
-  skipDisabled: {
-    color: colors.textTertiary,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.xxl,
-    padding: spacing.lg,
-    ...shadows.md,
-    gap: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  iconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  rowText: {
-    flex: 1,
-  },
-  cardTitle: {
-    ...typography.bodyBold,
-    color: colors.textPrimary,
-  },
-  cardSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  walletBox: {
-    marginTop: spacing.sm,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.background,
-  },
-  walletLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  walletValue: {
-    ...typography.bodyBold,
-    color: colors.textPrimary,
-    marginTop: spacing.xs,
-  },
-  balanceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  balanceChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    backgroundColor: `${colors.secondary}15`,
-  },
-  balanceChipText: {
-    ...typography.caption,
-    color: colors.secondary,
-  },
-  refresh: {
-    ...typography.caption,
-    color: colors.primary,
-  },
-  status: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: spacing.lg,
+      gap: spacing.lg,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    badge: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    title: {
+      ...typography.h1,
+      color: colors.textPrimary,
+      marginTop: spacing.xs,
+    },
+    subtitle: {
+      ...typography.body,
+      color: colors.textSecondary,
+      marginTop: spacing.xs,
+    },
+    skip: {
+      ...typography.bodyBold,
+      color: colors.primary,
+    },
+    skipDisabled: {
+      color: colors.textTertiary,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.xxl,
+      padding: spacing.lg,
+      ...shadows.md,
+      gap: spacing.md,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    iconCircle: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    rowText: {
+      flex: 1,
+    },
+    cardTitle: {
+      ...typography.bodyBold,
+      color: colors.textPrimary,
+    },
+    cardSubtitle: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    walletBox: {
+      marginTop: spacing.sm,
+      padding: spacing.md,
+      borderRadius: borderRadius.lg,
+      backgroundColor: colors.background,
+    },
+    walletLabel: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    walletValue: {
+      ...typography.bodyBold,
+      color: colors.textPrimary,
+      marginTop: spacing.xs,
+    },
+    balanceRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: spacing.sm,
+    },
+    balanceChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: borderRadius.full,
+      backgroundColor: `${colors.secondary}15`,
+    },
+    balanceChipText: {
+      ...typography.caption,
+      color: colors.secondary,
+    },
+    refresh: {
+      ...typography.caption,
+      color: colors.primary,
+    },
+    status: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      marginTop: spacing.sm,
+    },
+  });

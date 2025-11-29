@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../components';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { typography, spacing, borderRadius, shadows } from '../theme';
+import { useThemedColors } from '../context/ThemeContext';
 
 interface QRPaymentScreenProps {
   navigation: any;
@@ -19,6 +20,8 @@ export const QRPaymentScreen: React.FC<QRPaymentScreenProps> = ({ navigation, ro
   const amount = route.params?.amount || '0';
   const amountUSDC = route.params?.amountUSDC || '0.00';
   const destination = 'rQrcodeMerchantAddress';
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <View style={styles.container}>
@@ -54,66 +57,67 @@ export const QRPaymentScreen: React.FC<QRPaymentScreenProps> = ({ navigation, ro
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: spacing.lg,
-    gap: spacing.lg,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  title: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.xxl,
-    padding: spacing.lg,
-    ...shadows.md,
-    gap: spacing.md,
-    alignItems: 'center',
-  },
-  qrPlaceholder: {
-    width: 240,
-    height: 240,
-    borderRadius: borderRadius.xl,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  helper: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  meta: {
-    width: '100%',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  amount: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  address: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      padding: spacing.lg,
+      gap: spacing.lg,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    iconButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...shadows.sm,
+    },
+    title: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    card: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.xxl,
+      padding: spacing.lg,
+      ...shadows.md,
+      gap: spacing.md,
+      alignItems: 'center',
+    },
+    qrPlaceholder: {
+      width: 240,
+      height: 240,
+      borderRadius: borderRadius.xl,
+      borderWidth: 2,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.background,
+    },
+    helper: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    meta: {
+      width: '100%',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    amount: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    address: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+  });

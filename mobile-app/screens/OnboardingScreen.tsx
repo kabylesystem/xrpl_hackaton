@@ -1,16 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
-  ActivityIndicator,
-} from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { typography, spacing, borderRadius, shadows } from '../theme';
 import { Button } from '../components';
+import { useThemedColors } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const ONBOARDING_SEEN_KEY = '@xrpl_onboarding_seen';
@@ -40,6 +34,8 @@ interface OnboardingScreenProps {
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   const [current, setCurrent] = useState(0);
   const [checking, setChecking] = useState(true);
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -118,81 +114,82 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  hero: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-  },
-  badge: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  title: {
-    ...typography.h1,
-    marginTop: spacing.sm,
-    color: colors.textPrimary,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.xxl,
-    padding: spacing.lg,
-    marginTop: spacing.lg,
-    marginHorizontal: spacing.lg,
-    ...shadows.lg,
-  },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: `${colors.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  slideTitle: {
-    ...typography.h2,
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-  },
-  slideSubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-  },
-  progressDots: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: spacing.lg,
-  },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.border,
-  },
-  cta: {
-    marginTop: spacing.lg,
-    width: width - spacing.xl * 2,
-  },
-  skip: {
-    marginTop: spacing.sm,
-    alignItems: 'center',
-  },
-  skipText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centerContent: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    hero: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.xl,
+    },
+    badge: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    title: {
+      ...typography.h1,
+      marginTop: spacing.sm,
+      color: colors.textPrimary,
+    },
+    subtitle: {
+      ...typography.body,
+      color: colors.textSecondary,
+      marginTop: spacing.xs,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.xxl,
+      padding: spacing.lg,
+      marginTop: spacing.lg,
+      marginHorizontal: spacing.lg,
+      ...shadows.lg,
+    },
+    iconCircle: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: `${colors.primary}15`,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    slideTitle: {
+      ...typography.h2,
+      color: colors.textPrimary,
+      marginTop: spacing.md,
+    },
+    slideSubtitle: {
+      ...typography.body,
+      color: colors.textSecondary,
+      marginTop: spacing.sm,
+    },
+    progressDots: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: spacing.lg,
+    },
+    dot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: colors.border,
+    },
+    cta: {
+      marginTop: spacing.lg,
+      width: width - spacing.xl * 2,
+    },
+    skip: {
+      marginTop: spacing.sm,
+      alignItems: 'center',
+    },
+    skipText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+  });
