@@ -5,7 +5,20 @@ import * as path from "path";
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
-export async function setBtcUsdPrice() {
+interface FloatRatesResponse {
+  usd: {
+    code: string;
+    alphaCode: string;
+    numericCode: string;
+    name: string;
+    rate: number;
+    date: string;
+    inverseRate: number;
+  };
+  [key: string]: any;
+}
+
+export async function updateOraclePrice() {
   const nodeUrl = process.env.XRPL_NODE || "wss://s.altnet.rippletest.net:51233";
   const seed = process.env.XRPL_SEED;
 
@@ -14,26 +27,43 @@ export async function setBtcUsdPrice() {
     return;
   }
 
-  // 1. Connect to the XRPL
+  // 1. Fetch Price Data
+  console.log("Fetching price data from floatrates.com...");
+  let realPrice: number;
+  try {
+    const response = await fetch("https://www.floatrates.com/daily/ngn.json");
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = (await response.json()) as FloatRatesResponse;
+    realPrice = data.usd.rate;
+    console.log(`Fetched NGN/USD Rate: ${realPrice}`);
+  } catch (error) {
+    console.error("Error fetching price data:", error);
+    return;
+  }
+
+  // 2. Connect to the XRPL
   const client = new Client(nodeUrl);
   await client.connect();
 
   try {
-    // 2. Initialize your Wallet
+    // 3. Initialize your Wallet
     const wallet = Wallet.fromSeed(seed);
     console.log(`Using wallet: ${wallet.address}`);
 
-    // 3. Define Oracle Data
-    const providerName = "MyCryptoOracle";
+    // 4. Define Oracle Data
+    const providerName = "FloatRatesOracle";
     const assetClass = "currency";
     const oracleDocumentId = 1; // Unique ID for this specific Oracle object
 
-    // Price Data: BTC/USD = $96,520.50
-    const realPrice = 95520.5;
-    const scale = 2; // We want 2 decimal places
-    const scaledPrice = Math.round(realPrice * 10 ** scale).toString(); // "9652050"
+    // Price Data Handling
+    // We need to convert the float price to an integer with a scale
+    // Example: 0.0006925... -> with scale 15 -> 692568754036
+    const scale = 15;
+    const scaledPrice = Math.round(realPrice * 10 ** scale).toString();
 
-    // 4. Construct the OracleSet Transaction
+    // 5. Construct the OracleSet Transaction
     const oracleSetTx: OracleSet = {
       TransactionType: "OracleSet",
       Account: wallet.address,
@@ -44,10 +74,10 @@ export async function setBtcUsdPrice() {
       PriceDataSeries: [
         {
           PriceData: {
-            BaseAsset: "BTC",
+            BaseAsset: "NGN",
             QuoteAsset: "USD",
-            AssetPrice: scaledPrice, // Integer as string: "9652050"
-            Scale: scale, // Precision: 2
+            AssetPrice: scaledPrice,
+            Scale: scale,
           },
         },
       ],
@@ -55,20 +85,20 @@ export async function setBtcUsdPrice() {
 
     console.log("Preparing transaction...");
 
-    // 5. Autofill, Sign, and Submit
+    // 6. Autofill, Sign, and Submit
     const prepared = await client.autofill(oracleSetTx);
     const signed = wallet.sign(prepared);
 
     console.log("Submitting transaction...");
     const result = await client.submitAndWait(signed.tx_blob);
 
-    // 6. Check Results
+    // 7. Check Results
     if (result.result.meta && typeof result.result.meta !== "string") {
       const resultArgs = result.result.meta.TransactionResult;
       if (resultArgs === "tesSUCCESS") {
         console.log(`\n✅ Oracle Successfully Set!`);
         console.log(`Transaction Hash: ${result.result.hash}`);
-        console.log(`Price Published: ${realPrice} BTC/USD`);
+        console.log(`Price Published: ${realPrice} NGN/USD`);
       } else {
         console.error(`❌ Transaction Failed: ${resultArgs}`);
       }
@@ -82,5 +112,5 @@ export async function setBtcUsdPrice() {
 
 // Execute if run directly
 if (require.main === module) {
-  setBtcUsdPrice();
+  updateOraclePrice();
 }
