@@ -9,8 +9,16 @@ import { useThemedColors } from '../context/ThemeContext';
 type PaymentRequestScreenProps = StackScreenProps<any, 'PaymentRequest'>;
 
 export const PaymentRequestScreen: React.FC<PaymentRequestScreenProps> = ({ navigation, route }) => {
-  const { amount = '0', amountUSDC = '0.00', address = 'wallet-not-set' } = route.params || {};
-  const qrValue = JSON.stringify({ address, amount, amountUSDC });
+  const { amount = '0', amountToken = '0.00', tokenSymbol = 'XRP', address = 'wallet-not-set' } = route.params || {};
+  
+  const qrData = {
+    walletAddress: address,
+    amountOfToken: amountToken,
+    tokenSymbol: tokenSymbol,
+    tokenAddress: '', 
+  };
+  const qrValue = JSON.stringify(qrData);
+
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -28,7 +36,7 @@ export const PaymentRequestScreen: React.FC<PaymentRequestScreenProps> = ({ navi
           <QRCodeDisplay value={qrValue} size={220} />
           <View style={styles.meta}>
             <Text style={styles.amount}>{amount || '0'} NGN</Text>
-            <Text style={styles.helper}>≈ {amountUSDC} USDC</Text>
+            <Text style={styles.helper}>≈ {amountToken} {tokenSymbol}</Text>
             <Text style={styles.address} numberOfLines={1}>
               {address}
             </Text>
