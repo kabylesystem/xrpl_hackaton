@@ -6,19 +6,39 @@ import { useWallet } from "../context/WalletContext";
 import { WalletCard, TransactionListItem } from "../components";
 import { typography, spacing, borderRadius, shadows } from "../theme";
 import { useThemedColors } from "../context/ThemeContext";
+import { useSettings } from "../context/SettingsContext";
 
 interface HomeScreenProps {
   navigation: any;
 }
 
 const sampleTransactions = [
-  { type: "sent", amount: "1200", currency: "NGN", description: "Café MamaKoko", date: "Today" },
-  { type: "received", amount: "0.5", currency: "XRP", description: "Testnet faucet", date: "Yesterday" },
-  { type: "sent", amount: "800", currency: "NGN", description: "SMS payment", date: "Nov 28" },
+  {
+    type: "sent",
+    amount: "1200",
+    currency: "NGN",
+    description: "Café MamaKoko",
+    date: "Today",
+  },
+  {
+    type: "received",
+    amount: "0.5",
+    currency: "XRP",
+    description: "Testnet faucet",
+    date: "Yesterday",
+  },
+  {
+    type: "sent",
+    amount: "800",
+    currency: "NGN",
+    description: "SMS payment",
+    date: "Nov 28",
+  },
 ];
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { wallet, balance, rate, connected, statusMessage, refreshBalance } = useWallet();
+  const { settings } = useSettings();
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const quickActions = [
@@ -53,7 +73,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   ];
 
   const numericBalance = Number.parseFloat(balance) || 0;
-  const converted = (numericBalance * rate).toLocaleString("en-US", { maximumFractionDigits: 0 });
+  const converted = (numericBalance * rate).toLocaleString("en-US", {
+    maximumFractionDigits: 0,
+  });
+
+  const displayName = settings.displayName || "User";
+  const transactions = sampleTransactions.map((tx) => ({
+    ...tx,
+    description: tx.description === "Café MamaKoko" ? displayName : tx.description.replace("SMS payment", `Payment from ${displayName}`),
+  }));
 
   const handleCopyAddress = async () => {
     if (wallet?.address) {
@@ -68,12 +96,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.badge}>{connected ? "Connected" : "Offline"}</Text>
-            <Text style={styles.title}>TundePay</Text>
+            <Text style={styles.title}>Hi, {displayName}</Text>
             <Text style={styles.subtitle} numberOfLines={2}>
               NGN ↔ USDC bridge on XRPL testnet. {wallet ? "Wallet ready." : "Create your wallet."}
             </Text>
           </View>
-          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Settings")}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Settings")} activeOpacity={0.85}>
             <Ionicons name="menu" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
@@ -123,7 +151,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             {wallet && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Address</Text>
-                <View style={{ flexDirection: "row", alignItems: "center", flex: 1, justifyContent: "flex-end", gap: 8 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    flex: 1,
+                    justifyContent: "flex-end",
+                    gap: 8,
+                  }}
+                >
                   <Text style={[styles.infoValue, styles.address, { flexShrink: 1 }]} numberOfLines={1}>
                     {wallet.address}
                   </Text>
@@ -145,7 +181,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             </TouchableOpacity>
           </View>
           <View style={styles.listStack}>
-            {sampleTransactions.map((tx, index) => (
+            {transactions.map((tx, index) => (
               <TransactionListItem
                 key={`${tx.description}-${index}`}
                 type={tx.type as "sent" | "received"}
