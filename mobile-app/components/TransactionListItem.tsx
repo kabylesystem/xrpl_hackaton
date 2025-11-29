@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { typography, spacing, borderRadius, shadows } from '../theme';
+import { useThemedColors } from '../context/ThemeContext';
 
 interface TransactionListItemProps {
   type: 'sent' | 'received';
@@ -20,6 +21,8 @@ export const TransactionListItem: React.FC<TransactionListItemProps> = ({
   date,
   onPress,
 }) => {
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const iconName = type === 'sent' ? 'arrow-up-circle' : 'arrow-down-circle';
   const iconColor = type === 'sent' ? colors.primary : colors.secondary;
   const amountPrefix = type === 'sent' ? '-' : '+';
@@ -50,44 +53,45 @@ export const TransactionListItem: React.FC<TransactionListItemProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: borderRadius.xl,
-    ...shadows.sm,
-    gap: spacing.md,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    flex: 1,
-  },
-  description: {
-    ...typography.body,
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  date: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  amountContainer: {
-    alignItems: 'flex-end',
-  },
-  amount: {
-    ...typography.bodyBold,
-    marginBottom: 2,
-  },
-  currency: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      padding: spacing.md,
+      borderRadius: borderRadius.xl,
+      ...shadows.sm,
+      gap: spacing.md,
+    },
+    iconContainer: {
+      width: 48,
+      height: 48,
+      borderRadius: borderRadius.full,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    content: {
+      flex: 1,
+    },
+    description: {
+      ...typography.body,
+      color: colors.textPrimary,
+      marginBottom: 2,
+    },
+    date: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    amountContainer: {
+      alignItems: 'flex-end',
+    },
+    amount: {
+      ...typography.bodyBold,
+      marginBottom: 2,
+    },
+    currency: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+  });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -7,7 +7,8 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { colors, typography, borderRadius, shadows } from '../theme';
+import { typography, borderRadius, shadows } from '../theme';
+import { useThemedColors } from '../context/ThemeContext';
 
 interface ButtonProps {
   title: string;
@@ -28,6 +29,8 @@ export const Button: React.FC<ButtonProps> = ({
   icon,
   style,
 }) => {
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const getButtonStyle = (): ViewStyle[] => {
     const baseStyle: ViewStyle[] = [styles.button];
 
@@ -83,40 +86,41 @@ export const Button: React.FC<ButtonProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: borderRadius.xl,
-    gap: 8,
-    ...shadows.sm,
-  },
-  primaryButton: {
-    backgroundColor: colors.primary,
-  },
-  secondaryButton: {
-    backgroundColor: colors.secondary,
-  },
-  outlineButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  disabledButton: {
-    backgroundColor: colors.textTertiary,
-    borderColor: colors.textTertiary,
-  },
-  text: {
-    ...typography.button,
-    color: colors.textWhite,
-  },
-  outlineText: {
-    color: colors.primary,
-  },
-  disabledText: {
-    color: colors.textWhite,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    button: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      borderRadius: borderRadius.xl,
+      gap: 8,
+      ...shadows.sm,
+    },
+    primaryButton: {
+      backgroundColor: colors.primary,
+    },
+    secondaryButton: {
+      backgroundColor: colors.secondary,
+    },
+    outlineButton: {
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderColor: colors.primary,
+    },
+    disabledButton: {
+      backgroundColor: colors.textTertiary,
+      borderColor: colors.textTertiary,
+    },
+    text: {
+      ...typography.button,
+      color: colors.textWhite,
+    },
+    outlineText: {
+      color: colors.primary,
+    },
+    disabledText: {
+      color: colors.textWhite,
+    },
+  });

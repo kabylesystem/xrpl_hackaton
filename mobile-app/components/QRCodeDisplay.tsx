@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { colors, spacing, borderRadius } from '../theme';
+import { spacing, borderRadius } from '../theme';
+import { useThemedColors } from '../context/ThemeContext';
 
 interface QRCodeDisplayProps {
   value: string;
@@ -12,6 +13,8 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
   value,
   size = 200,
 }) => {
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <View style={styles.container}>
       <QRCode
@@ -24,12 +27,13 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.textWhite,
-    padding: spacing.md,
-    borderRadius: borderRadius.xl,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.textWhite,
+      padding: spacing.md,
+      borderRadius: borderRadius.xl,
+    },
+  });

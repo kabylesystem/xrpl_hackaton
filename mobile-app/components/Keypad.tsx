@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { typography, spacing, borderRadius, shadows } from '../theme';
+import { useThemedColors } from '../context/ThemeContext';
 
 interface KeypadProps {
   onNumberPress: (num: string) => void;
@@ -10,6 +11,8 @@ interface KeypadProps {
 
 export const Keypad: React.FC<KeypadProps> = ({ onNumberPress, onDelete }) => {
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'del'];
+  const colors = useThemedColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const renderKey = (key: string) => {
     return (
@@ -35,28 +38,31 @@ export const Keypad: React.FC<KeypadProps> = ({ onNumberPress, onDelete }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    maxWidth: 320,
-    alignSelf: 'center',
-  },
-  key: {
-    width: 96,
-    height: 72,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  keyText: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      maxWidth: '100%',
+      alignSelf: 'center',
+    },
+    key: {
+      width: '30%',
+      maxWidth: 110,
+      minWidth: 80,
+      height: 68,
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.xl,
+      justifyContent: 'center',
+      alignItems: 'center',
+      ...shadows.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    keyText: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+  });
