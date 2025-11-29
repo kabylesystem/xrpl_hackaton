@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Linking, Alert, Platform } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import { typography, spacing, borderRadius, shadows } from "../theme";
 import { Button } from "../components";
@@ -23,9 +24,46 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
   const { submitPayment, getSignedPayment, loading: walletLoading } = useWallet();
   const [scannedData, setScannedData] = useState<PaymentQRData | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
 
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    if (scannedData) return;
+
+    try {
+      // Try parsing as JSON first (hackathon format)
+      const parsed = JSON.parse(data);
+      if (parsed.walletAddress) {
+        setScannedData({
+          walletAddress: parsed.walletAddress,
+          amountOfToken: parsed.amountOfToken || "0",
+          tokenSymbol: parsed.tokenSymbol || "XRP",
+          tokenAddress: parsed.tokenAddress || "",
+        });
+        return;
+      }
+    } catch (e) {
+      // Not JSON, try other formats
+    }
+
+    // Fallback: Check if it's a simple wallet address
+    if (data.startsWith("r") && data.length >= 25 && data.length <= 35) {
+      setScannedData({
+        walletAddress: data,
+        amountOfToken: "0",
+        tokenSymbol: "XRP",
+        tokenAddress: "",
+      });
+      return;
+    }
+
+    // Fallback: XRPL URI (simple parser)
+    if (data.startsWith("xrpl:") || data.startsWith("ripple:")) {
+      // simplistic parsing logic could go here, but for now ignoring to avoid complexity
+    }
+  };
 
   const handleSimulateScan = () => {
     // Mock data based on mobile-app/utils/exampleQrCodeData.json
@@ -114,8 +152,21 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
 
         {!scannedData ? (
           <View style={styles.scanContainer}>
-            <View style={styles.qrPlaceholder}>
-              <Ionicons name="qr-code-outline" size={96} color={colors.primary} />
+            <View style={[styles.qrPlaceholder, { overflow: "hidden" }]}>
+              {permission?.granted ? (
+                <CameraView
+                  style={StyleSheet.absoluteFill}
+                  onBarcodeScanned={scannedData ? undefined : handleBarCodeScanned}
+                  barcodeScannerSettings={{
+                    barcodeTypes: ["qr"],
+                  }}
+                />
+              ) : (
+                <>
+                  <Ionicons name="qr-code-outline" size={96} color={colors.primary} />
+                  <Button title="Allow Camera" onPress={requestPermission} variant="outline" style={{ marginTop: spacing.md }} />
+                </>
+              )}
             </View>
             <Text style={styles.helper}>Point camera at a QR code to pay.</Text>
             <Button title="Simulate Scan" onPress={handleSimulateScan} style={styles.simulateButton} />
@@ -141,7 +192,7 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
                 title="Pay via Internet (XRPL)"
                 onPress={handlePayInternet}
                 disabled={processing || walletLoading}
-                loading={processing && !walletLoading} // assuming walletLoading is mostly for init
+                loading={processing}
                 icon={<Ionicons name="globe-outline" size={20} color={colors.textWhite} />}
               />
               <Button
