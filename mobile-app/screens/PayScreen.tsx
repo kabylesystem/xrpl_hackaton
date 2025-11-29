@@ -1,34 +1,88 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { typography, spacing, borderRadius, shadows } from '../theme';
-import { Button, Keypad } from '../components';
-import { useThemedColors } from '../context/ThemeContext';
+import React, { useMemo, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Linking, Alert, Platform } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { typography, spacing, borderRadius, shadows } from "../theme";
+import { Button } from "../components";
+import { useThemedColors } from "../context/ThemeContext";
+import { useWallet } from "../context/WalletContext";
 
 interface PayScreenProps {
   navigation: any;
 }
 
+interface PaymentQRData {
+  walletAddress: string;
+  amountOfToken: string;
+  tokenSymbol: string;
+  tokenAddress: string;
+}
+
+const SMS_GATEWAY_NUMBER = "+1888888888";
+
 export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
-  const [amount, setAmount] = useState('');
-  const rate = 1600;
+  const { submitPayment, getSignedPayment, loading: walletLoading } = useWallet();
+  const [scannedData, setScannedData] = useState<PaymentQRData | null>(null);
+  const [processing, setProcessing] = useState(false);
+
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const amountNGN = Number.parseFloat(amount) || 0;
-  const amountUSDC = useMemo(() => (amountNGN / rate).toFixed(2), [amountNGN, rate]);
+  const handleSimulateScan = () => {
+    // Mock data based on mobile-app/utils/exampleQrCodeData.json
+    // using valid testnet address for testing flow if needed, but keeping structure
+    setScannedData({
+      walletAddress: "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe", // Example destination
+      amountOfToken: "10",
+      tokenSymbol: "USDC",
+      tokenAddress: "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe", // Example issuer
+    });
+  };
 
-  const onNumberPress = (num: string) => {
-    if (num === '.' && amount.includes('.')) return;
-    if (amount === '0' && num !== '.') {
-      setAmount(num);
-    } else {
-      setAmount(amount + num);
+  const handlePayInternet = async () => {
+    if (!scannedData) return;
+
+    setProcessing(true);
+    try {
+      // Note: submitPayment now supports currency and issuer
+      const hash = await submitPayment(scannedData.walletAddress, scannedData.amountOfToken, scannedData.tokenSymbol, scannedData.tokenAddress);
+      Alert.alert("Success", `Payment Sent! Hash: ${hash}`, [{ text: "OK", onPress: () => navigation.goBack() }]);
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Payment failed");
+    } finally {
+      setProcessing(false);
     }
   };
 
-  const onDelete = () => {
-    setAmount((prev) => prev.slice(0, -1));
+  const handlePaySMS = async () => {
+    if (!scannedData) return;
+
+    setProcessing(true);
+    try {
+      const signedBlob = await getSignedPayment(
+        scannedData.walletAddress,
+        scannedData.amountOfToken,
+        scannedData.tokenSymbol,
+        scannedData.tokenAddress
+      );
+
+      const smsUrl = `sms:${SMS_GATEWAY_NUMBER}${Platform.OS === "ios" ? "&" : "?"}body=${encodeURIComponent(signedBlob)}`;
+
+      const canOpen = await Linking.canOpenURL(smsUrl);
+      if (canOpen) {
+        await Linking.openURL(smsUrl);
+        Alert.alert("SMS Opened", "Please send the SMS to complete the transaction.", [{ text: "Done", onPress: () => navigation.goBack() }]);
+      } else {
+        Alert.alert("Error", "Cannot open SMS app");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", "Failed to sign transaction: " + error.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const resetScan = () => {
+    setScannedData(null);
   };
 
   return (
@@ -38,41 +92,52 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
           <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.title}>Pay</Text>
+          <Text style={styles.title}>Scan to Pay</Text>
         </View>
 
-        <View style={styles.amountBox}>
-          <Text style={styles.helper}>Amount in NGN</Text>
-          <Text style={styles.amount}>
-            {amount || '0'} <Text style={styles.amountSuffix}>NGN</Text>
-          </Text>
-          <Text style={styles.converted}>≈ {amountUSDC} USDC</Text>
-        </View>
+        {!scannedData ? (
+          <View style={styles.scanContainer}>
+            <View style={styles.qrPlaceholder}>
+              <Ionicons name="qr-code-outline" size={96} color={colors.primary} />
+            </View>
+            <Text style={styles.helper}>Point camera at a QR code to pay.</Text>
+            <Button title="Simulate Scan" onPress={handleSimulateScan} style={styles.simulateButton} />
+          </View>
+        ) : (
+          <View style={styles.resultContainer}>
+            <View style={styles.infoCard}>
+              <Text style={styles.label}>Paying to:</Text>
+              <Text style={styles.value}>{scannedData.walletAddress}</Text>
 
-        <Keypad onNumberPress={onNumberPress} onDelete={onDelete} />
+              <View style={styles.divider} />
 
-        <View style={styles.actions}>
-          <Button
-            title="Pay via NFC"
-            onPress={() => navigation.navigate('NFCPayment', { amount, amountUSDC })}
-            disabled={amountNGN === 0}
-            icon={<Ionicons name="phone-portrait-outline" size={20} color={colors.textWhite} />}
-          />
-          <Button
-            title="Pay via QR Scan"
-            variant="outline"
-            onPress={() => navigation.navigate('QRPayment', { amount, amountUSDC })}
-            disabled={amountNGN === 0}
-            icon={<Ionicons name="qr-code-outline" size={20} color={colors.primary} />}
-          />
-          <Button
-            title="Pay via SMS (offline)"
-            variant="secondary"
-            onPress={() => navigation.navigate('SMSPayment', { amount })}
-            disabled={amountNGN === 0}
-            icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.textWhite} />}
-          />
-        </View>
+              <Text style={styles.label}>Amount:</Text>
+              <Text style={styles.amount}>
+                {scannedData.amountOfToken} <Text style={styles.symbol}>{scannedData.tokenSymbol}</Text>
+              </Text>
+
+              {scannedData.tokenSymbol !== "XRP" && <Text style={styles.issuer}>Issuer: {scannedData.tokenAddress}</Text>}
+            </View>
+
+            <View style={styles.actions}>
+              <Button
+                title="Pay via Internet (XRPL)"
+                onPress={handlePayInternet}
+                disabled={processing || walletLoading}
+                loading={processing && !walletLoading} // assuming walletLoading is mostly for init
+                icon={<Ionicons name="globe-outline" size={20} color={colors.textWhite} />}
+              />
+              <Button
+                title="Pay via SMS"
+                variant="secondary"
+                onPress={handlePaySMS}
+                disabled={processing || walletLoading}
+                icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.textWhite} />}
+              />
+              <Button title="Cancel / Rescan" variant="outline" onPress={resetScan} disabled={processing} />
+            </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -91,10 +156,11 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     content: {
       padding: spacing.lg,
       gap: spacing.lg,
+      flexGrow: 1,
     },
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.md,
     },
     iconButton: {
@@ -102,34 +168,77 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 42,
       borderRadius: 21,
       backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       ...shadows.sm,
     },
     title: {
       ...typography.h2,
       color: colors.textPrimary,
     },
-    amountBox: {
-      alignItems: 'center',
-      gap: spacing.sm,
-      paddingVertical: spacing.md,
+    scanContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.xl,
+      minHeight: 400,
+    },
+    qrPlaceholder: {
+      width: 240,
+      height: 240,
+      borderRadius: borderRadius.xl,
+      borderWidth: 2,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.surface,
+      borderStyle: "dashed",
     },
     helper: {
+      ...typography.body,
+      color: colors.textSecondary,
+      textAlign: "center",
+      maxWidth: 280,
+    },
+    simulateButton: {
+      marginTop: spacing.lg,
+    },
+    resultContainer: {
+      gap: spacing.xl,
+    },
+    infoCard: {
+      backgroundColor: colors.surface,
+      padding: spacing.xl,
+      borderRadius: borderRadius.xl,
+      ...shadows.md,
+      gap: spacing.sm,
+    },
+    label: {
       ...typography.caption,
       color: colors.textSecondary,
     },
+    value: {
+      ...typography.body,
+      color: colors.textPrimary,
+      marginBottom: spacing.sm,
+    },
     amount: {
       ...typography.h1,
+      color: colors.primary,
+    },
+    symbol: {
+      ...typography.h3,
       color: colors.textPrimary,
     },
-    amountSuffix: {
-      ...typography.h3,
+    issuer: {
+      ...typography.caption,
       color: colors.textSecondary,
+      fontSize: 10,
     },
-    converted: {
-      ...typography.h3,
-      color: colors.primary,
+    divider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: spacing.md,
     },
     actions: {
       gap: spacing.md,

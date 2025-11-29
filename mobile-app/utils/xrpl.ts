@@ -39,13 +39,27 @@ export const sendPayment = async (
   client: Client,
   wallet: Wallet,
   destination: string,
-  amount: string
+  amount: string,
+  currency: string = 'XRP',
+  issuer?: string
 ): Promise<any> => {
+  let paymentAmount: any;
+
+  if (currency === 'XRP') {
+    paymentAmount = xrpToDrops(amount);
+  } else {
+    paymentAmount = {
+      currency,
+      value: amount,
+      issuer
+    };
+  }
+
   const payment: Payment = {
     TransactionType: 'Payment',
     Account: wallet.address,
     Destination: destination,
-    Amount: xrpToDrops(amount),
+    Amount: paymentAmount,
   };
 
   try {
@@ -57,6 +71,40 @@ export const sendPayment = async (
     console.error('Error sending payment:', error);
     throw error;
   }
+};
+
+export const preparePayment = async (
+  client: Client,
+  wallet: Wallet,
+  destination: string,
+  amount: string,
+  currency: string = 'XRP',
+  issuer?: string
+): Promise<Payment> => {
+  let paymentAmount: any;
+
+  if (currency === 'XRP') {
+    paymentAmount = xrpToDrops(amount);
+  } else {
+    paymentAmount = {
+      currency,
+      value: amount,
+      issuer
+    };
+  }
+
+  const payment: Payment = {
+    TransactionType: 'Payment',
+    Account: wallet.address,
+    Destination: destination,
+    Amount: paymentAmount,
+  };
+
+  return await client.autofill(payment);
+};
+
+export const signTransaction = (wallet: Wallet, transaction: any): { tx_blob: string; hash: string } => {
+  return wallet.sign(transaction);
 };
 
 export const disconnectFromXRPL = async (client: Client | null): Promise<void> => {
