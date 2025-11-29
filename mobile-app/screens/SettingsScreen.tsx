@@ -10,6 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { useSettings } from "../context/SettingsContext";
+import { colors, typography, spacing, borderRadius, shadows } from "../theme";
 
 interface SettingsScreenProps {
   navigation: any;
@@ -76,8 +77,8 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <Switch
               value={isAutoMode}
               onValueChange={handleToggleMode}
-              trackColor={{ false: "#d1d5db", true: "#3498db" }}
-              thumbColor={isAutoMode ? "#fff" : "#f4f3f4"}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={isAutoMode ? colors.textWhite : "#f4f3f4"}
             />
           </View>
         </View>
@@ -152,32 +153,27 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: colors.background,
   },
   content: {
-    padding: 20,
+    padding: spacing.lg,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#23292E",
-    marginBottom: 8,
+    ...typography.h2,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 24,
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    ...shadows.md,
   },
   toggleContainer: {
     flexDirection: "row",
@@ -186,117 +182,109 @@ const styles = StyleSheet.create({
   },
   toggleLabelContainer: {
     flex: 1,
-    marginRight: 12,
+    marginRight: spacing.sm,
   },
   toggleLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#23292E",
-    marginBottom: 4,
+    ...typography.bodyBold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   toggleDescription: {
-    fontSize: 13,
-    color: "#666",
+    ...typography.caption,
+    color: colors.textSecondary,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#23292E",
-    marginBottom: 8,
+    ...typography.bodyBold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   cardDescription: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 16,
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
   },
   presetRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: spacing.xs,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: colors.border,
   },
   presetRange: {
-    fontSize: 14,
-    color: "#23292E",
-    fontWeight: "500",
+    ...typography.body,
+    color: colors.textPrimary,
   },
   presetMax: {
-    fontSize: 14,
-    color: "#3498db",
-    fontWeight: "600",
+    ...typography.bodyBold,
+    color: colors.primary,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#3498db",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "#fff",
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.surface,
   },
   input: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#23292E",
-    paddingVertical: 12,
+    ...typography.h3,
+    color: colors.textPrimary,
+    paddingVertical: spacing.sm,
   },
   inputSuffix: {
-    fontSize: 16,
-    color: "#666",
-    fontWeight: "600",
-    marginLeft: 8,
+    ...typography.bodyBold,
+    color: colors.textSecondary,
+    marginLeft: spacing.xs,
   },
   inputHint: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 8,
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   exampleCard: {
-    backgroundColor: "#e8f4f8",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: `${colors.primary}12`,
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     borderLeftWidth: 4,
-    borderLeftColor: "#3498db",
+    borderLeftColor: colors.primary,
   },
   exampleTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#23292E",
-    marginBottom: 8,
+    ...typography.bodyBold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   exampleText: {
-    fontSize: 13,
-    color: "#555",
+    ...typography.caption,
+    color: colors.textSecondary,
     lineHeight: 20,
   },
   saveButton: {
-    backgroundColor: "#27ae60",
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: colors.secondary,
+    padding: spacing.md,
+    borderRadius: borderRadius.xl,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: spacing.xs,
+    ...shadows.sm,
   },
   saveButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
+    ...typography.button,
+    color: colors.textWhite,
   },
   cancelButton: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderRadius: borderRadius.xl,
     alignItems: "center",
-    marginTop: 12,
+    marginTop: spacing.sm,
     borderWidth: 2,
-    borderColor: "#e74c3c",
+    borderColor: colors.error,
   },
   cancelButtonText: {
-    color: "#e74c3c",
-    fontSize: 18,
-    fontWeight: "600",
+    ...typography.button,
+    color: colors.error,
   },
 });

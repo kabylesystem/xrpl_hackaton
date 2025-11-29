@@ -1,4 +1,4 @@
-import { Client, Wallet, xrpToDrops, dropsToXrp } from 'xrpl';
+import { Client, Wallet, xrpToDrops, dropsToXrp, Payment } from 'xrpl';
 
 const TESTNET_URL = 'wss://s.altnet.rippletest.net:51233';
 
@@ -28,7 +28,7 @@ export const getBalance = async (client: Client, address: string): Promise<strin
       account: address,
       ledger_index: 'validated',
     });
-    return dropsToXrp(response.result.account_data.Balance);
+    return String(dropsToXrp(response.result.account_data.Balance));
   } catch (error) {
     console.error('Error getting balance:', error);
     return '0';
@@ -41,7 +41,7 @@ export const sendPayment = async (
   destination: string,
   amount: string
 ): Promise<any> => {
-  const payment = {
+  const payment: Payment = {
     TransactionType: 'Payment',
     Account: wallet.address,
     Destination: destination,

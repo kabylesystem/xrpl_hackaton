@@ -1,371 +1,266 @@
-import React, { useState, useEffect, useRef } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Animated,
-} from "react-native";
-import { Client, Wallet } from "xrpl";
-import {
-  connectToXRPL,
-  createWallet,
-  getBalance,
-  disconnectFromXRPL,
-} from "../utils/xrpl";
-import { useSettings } from "../context/SettingsContext";
+import React from 'react';
+import { ScrollView, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useWallet } from '../context/WalletContext';
+import { WalletCard, TransactionListItem } from '../components';
+import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 
 interface HomeScreenProps {
   navigation: any;
 }
 
+const quickActions = [
+  {
+    label: 'Pay',
+    helper: 'Send money',
+    icon: 'send',
+    color: colors.primary,
+    target: 'Pay',
+  },
+  {
+    label: 'Receive',
+    helper: 'Get paid',
+    icon: 'download',
+    color: colors.secondary,
+    target: 'Receive',
+  },
+  {
+    label: 'SMS',
+    helper: 'Offline mode',
+    icon: 'chatbubbles',
+    color: colors.secondary,
+    target: 'SMSPayment',
+  },
+  {
+    label: 'History',
+    helper: 'Transactions',
+    icon: 'time',
+    color: colors.primary,
+    target: 'History',
+  },
+];
+
+const sampleTransactions = [
+  { type: 'sent', amount: '1200', currency: 'NGN', description: 'Café MamaKoko', date: 'Today' },
+  { type: 'received', amount: '0.5', currency: 'XRP', description: 'Testnet faucet', date: 'Yesterday' },
+  { type: 'sent', amount: '800', currency: 'NGN', description: 'SMS payment', date: 'Nov 28' },
+];
+
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const [client, setClient] = useState<Client | null>(null);
-  const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [balance, setBalance] = useState<string>("0");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [connected, setConnected] = useState<boolean>(false);
+  const { wallet, balance, rate, connected, statusMessage, refreshBalance } = useWallet();
 
-  // Get settings from context
-  const { getMaxBalance } = useSettings();
-
-  // Animation for progress bar
-  const progressAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    return () => {
-      if (client) {
-        disconnectFromXRPL(client);
-      }
-    };
-  }, [client]);
-
-  // Animate progress bar when balance changes
-  useEffect(() => {
-    const balanceNum = Number.parseFloat(balance) || 0;
-    const maxBalance = getMaxBalance(balanceNum);
-    const progress = Math.min(balanceNum / maxBalance, 1);
-
-    Animated.spring(progressAnim, {
-      toValue: progress,
-      useNativeDriver: false,
-      friction: 8,
-      tension: 40,
-    }).start();
-  }, [balance, getMaxBalance]);
-
-  const handleConnect = async () => {
-    setLoading(true);
-    try {
-      const xrplClient = await connectToXRPL();
-      setClient(xrplClient);
-      setConnected(true);
-      Alert.alert("Success", "Connected to XRPL Testnet");
-    } catch (error) {
-      Alert.alert("Error", "Failed to connect to XRPL");
-      console.error(error);
-    }
-    setLoading(false);
-  };
-
-  const handleCreateWallet = async () => {
-    if (!client) {
-      Alert.alert("Error", "Please connect to XRPL first");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const newWallet = await createWallet(client);
-      setWallet(newWallet);
-
-      // Wait a bit for funding to complete
-      setTimeout(async () => {
-        const bal = await getBalance(client, newWallet.address);
-        setBalance(bal);
-        Alert.alert(
-          "Wallet Created!",
-          `Address: ${newWallet.address.substring(0, 20)}...`
-        );
-      }, 3000);
-    } catch (error) {
-      Alert.alert("Error", "Failed to create wallet");
-      console.error(error);
-    }
-    setLoading(false);
-  };
-
-  const handleRefreshBalance = async () => {
-    if (!wallet || !client) return;
-
-    setLoading(true);
-    try {
-      const bal = await getBalance(client, wallet.address);
-      setBalance(bal);
-    } catch (error) {
-      Alert.alert("Error", "Failed to refresh balance");
-    }
-    setLoading(false);
-  };
+  const numericBalance = Number.parseFloat(balance) || 0;
+  const converted = (numericBalance * rate).toLocaleString('en-US', { maximumFractionDigits: 0 });
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>XRPL Wallet</Text>
-
-      <View style={styles.statusContainer}>
-        <Text style={styles.statusLabel}>Status:</Text>
-        <Text style={[styles.statusText, connected && styles.connected]}>
-          {connected ? "Connected to Testnet" : "Disconnected"}
-        </Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.badge}>{connected ? 'Connected' : 'Offline'}</Text>
+          <Text style={styles.title}>TundePay</Text>
+          <Text style={styles.subtitle}>
+            NGN ↔ USDC bridge on XRPL testnet. {wallet ? 'Wallet ready.' : 'Create your wallet.'}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Settings')}>
+          <Ionicons name="menu" size={22} color={colors.textPrimary} />
+        </TouchableOpacity>
       </View>
 
-      {!connected ? (
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleConnect}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Connect to XRPL</Text>
-          )}
-        </TouchableOpacity>
-      ) : (
-        <>
-          {!wallet ? (
+      <WalletCard
+        balance={numericBalance.toFixed(2)}
+        convertedAmount={converted}
+        rate={`1 USD ≈ ${rate} NGN`}
+        currencyLabel="XRP"
+        convertedLabel="NGN"
+      />
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Quick actions</Text>
+        <View style={styles.quickGrid}>
+          {quickActions.map((action) => (
             <TouchableOpacity
-              style={styles.button}
-              onPress={handleCreateWallet}
-              disabled={loading}
+              key={action.label}
+              style={styles.quickCard}
+              onPress={() => navigation.navigate(action.target)}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Create New Wallet</Text>
-              )}
+              <View style={[styles.quickIcon, { backgroundColor: `${action.color}15` }]}>
+                <Ionicons name={action.icon as any} size={20} color={action.color} />
+              </View>
+              <Text style={styles.quickLabel}>{action.label}</Text>
+              <Text style={styles.quickHelper}>{action.helper}</Text>
             </TouchableOpacity>
-          ) : (
-            <View style={styles.walletContainer}>
-              <View style={styles.balanceCard}>
-                <Text style={styles.balanceLabel}>Balance</Text>
-                <Text style={styles.balanceAmount}>{balance} XRP</Text>
+          ))}
+        </View>
+      </View>
 
-                {/* Progress Bar */}
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressBarBackground}>
-                    <Animated.View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: progressAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ["0%", "100%"],
-                          }),
-                        },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.progressText}>
-                    {Number.parseFloat(balance) > 0
-                      ? `${(
-                          (Number.parseFloat(balance) /
-                            getMaxBalance(Number.parseFloat(balance))) *
-                          100
-                        ).toFixed(1)}% of ${getMaxBalance(
-                          Number.parseFloat(balance)
-                        )} XRP goal`
-                      : "Start your journey!"}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.infoCard}>
-                <Text style={styles.infoLabel}>Address:</Text>
-                <Text style={styles.infoValue}>{wallet.address}</Text>
-              </View>
-
-              <View style={styles.infoCard}>
-                <Text style={styles.infoLabel}>Public Key:</Text>
-                <Text style={styles.infoValue} numberOfLines={1}>
-                  {wallet.publicKey}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.refreshButton}
-                onPress={handleRefreshBalance}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#23292E" />
-                ) : (
-                  <Text style={styles.refreshButtonText}>Refresh Balance</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.sendButton}
-                onPress={() =>
-                  navigation.navigate("SendPayment", { wallet, client })
-                }
-              >
-                <Text style={styles.buttonText}>Send Payment</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.settingsButton}
-                onPress={() => navigation.navigate("Settings")}
-              >
-                <Text style={styles.settingsButtonText}>⚙️ Settings</Text>
-              </TouchableOpacity>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Live oracle</Text>
+            <Text style={styles.helper}>1 USD ≈ {rate} NGN (refreshed locally)</Text>
+          </View>
+          <TouchableOpacity onPress={refreshBalance}>
+            <Ionicons name="refresh" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>XRPL wallet</Text>
+            <Text style={styles.infoValue}>{wallet ? 'Active' : 'Missing'}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Balance</Text>
+            <Text style={styles.infoValue}>{numericBalance.toFixed(2)} XRP</Text>
+          </View>
+          {wallet && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Address</Text>
+              <Text style={[styles.infoValue, styles.address]} numberOfLines={1}>
+                {wallet.address}
+              </Text>
             </View>
           )}
-        </>
-      )}
+          {statusMessage && <Text style={styles.helper}>{statusMessage}</Text>}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent activity</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('History')}>
+            <Text style={styles.link}>See all</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.listStack}>
+          {sampleTransactions.map((tx, index) => (
+            <TransactionListItem
+              key={`${tx.description}-${index}`}
+              type={tx.type as 'sent' | 'received'}
+              amount={tx.amount}
+              currency={tx.currency}
+              description={tx.description}
+              date={tx.date}
+            />
+          ))}
+        </View>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
-    backgroundColor: "#f5f5f5",
-    padding: 20,
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    padding: spacing.lg,
+    gap: spacing.lg,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  badge: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
   title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#23292E",
-    marginBottom: 30,
-    marginTop: 20,
-    textAlign: "center",
+    ...typography.h1,
+    color: colors.textPrimary,
+    marginTop: spacing.xs,
   },
-  statusContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 30,
+  subtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
-  statusLabel: {
-    fontSize: 16,
-    color: "#666",
-    marginRight: 8,
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
   },
-  statusText: {
-    fontSize: 16,
-    color: "#e74c3c",
-    fontWeight: "600",
+  section: {
+    gap: spacing.sm,
   },
-  connected: {
-    color: "#27ae60",
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  button: {
-    backgroundColor: "#23292E",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginVertical: 10,
+  sectionTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
+  helper: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
-  walletContainer: {
-    width: "100%",
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
   },
-  balanceCard: {
-    backgroundColor: "#23292E",
-    padding: 30,
+  quickCard: {
+    width: '47%',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+    ...shadows.sm,
+  },
+  quickIcon: {
+    width: 44,
+    height: 44,
     borderRadius: 16,
-    alignItems: "center",
-    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
-  balanceLabel: {
-    color: "#fff",
-    fontSize: 16,
-    marginBottom: 8,
+  quickLabel: {
+    ...typography.bodyBold,
+    color: colors.textPrimary,
   },
-  balanceAmount: {
-    color: "#fff",
-    fontSize: 36,
-    fontWeight: "bold",
+  quickHelper: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   infoCard: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+    ...shadows.sm,
+    gap: spacing.sm,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   infoLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 4,
+    ...typography.body,
+    color: colors.textSecondary,
   },
   infoValue: {
-    fontSize: 14,
-    color: "#23292E",
-    fontWeight: "500",
+    ...typography.bodyBold,
+    color: colors.textPrimary,
+    flexShrink: 1,
+    textAlign: 'right',
   },
-  refreshButton: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginVertical: 10,
-    borderWidth: 2,
-    borderColor: "#23292E",
-  },
-  refreshButtonText: {
-    color: "#23292E",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  sendButton: {
-    backgroundColor: "#3498db",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  progressContainer: {
-    width: "100%",
-    marginTop: 20,
-  },
-  progressBarBackground: {
-    width: "100%",
-    height: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  progressBarFill: {
-    height: "100%",
-    backgroundColor: "#27ae60",
-    borderRadius: 4,
-  },
-  progressText: {
-    color: "rgba(255, 255, 255, 0.8)",
+  address: {
     fontSize: 12,
-    marginTop: 8,
-    textAlign: "center",
   },
-  settingsButton: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 12,
-    borderWidth: 2,
-    borderColor: "#9b59b6",
+  link: {
+    ...typography.caption,
+    color: colors.primary,
   },
-  settingsButtonText: {
-    color: "#9b59b6",
-    fontSize: 18,
-    fontWeight: "600",
+  listStack: {
+    gap: spacing.sm,
   },
 });

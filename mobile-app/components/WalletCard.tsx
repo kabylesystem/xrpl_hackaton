@@ -5,15 +5,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 
 interface WalletCardProps {
-  usdcBalance: string;
-  ngnEquivalent: string;
+  balance: string;
+  convertedAmount: string;
   rate: string;
+  currencyLabel?: string;
+  convertedLabel?: string;
 }
 
 export const WalletCard: React.FC<WalletCardProps> = ({
-  usdcBalance,
-  ngnEquivalent,
+  balance,
+  convertedAmount,
   rate,
+  currencyLabel = 'USDC',
+  convertedLabel = 'NGN',
 }) => {
   return (
     <LinearGradient
@@ -29,10 +33,14 @@ export const WalletCard: React.FC<WalletCardProps> = ({
       <View style={styles.content}>
         <Text style={styles.label}>Total Balance</Text>
 
-        <Text style={styles.usdcBalance}>{usdcBalance} USDC</Text>
+        <Text style={styles.usdcBalance}>
+          {balance} {currencyLabel}
+        </Text>
 
         <View style={styles.ngnRow}>
-          <Text style={styles.ngnEquivalent}>≈ {ngnEquivalent} NGN</Text>
+          <Text style={styles.ngnEquivalent}>
+            ≈ {convertedAmount} {convertedLabel}
+          </Text>
         </View>
 
         <View style={styles.rateRow}>
