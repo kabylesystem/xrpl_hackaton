@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Client, Wallet } from 'xrpl';
 import {
   connectToXRPL,
@@ -6,6 +7,8 @@ import {
   disconnectFromXRPL,
   getBalance,
   sendPayment,
+  preparePayment,
+  signTransaction,
 } from '../utils/xrpl';
 
 interface WalletContextValue {
@@ -18,11 +21,14 @@ interface WalletContextValue {
   loading: boolean;
   connect: () => Promise<void>;
   setupWallet: () => Promise<void>;
-  refreshBalance: () => Promise<void>;
-  submitPayment: (destination: string, amount: string) => Promise<string>;
+  refreshBalance: (targetWallet?: Wallet) => Promise<void>;
+  submitPayment: (destination: string, amount: string, currency?: string, issuer?: string) => Promise<string>;
+  getSignedPayment: (destination: string, amount: string, currency?: string, issuer?: string) => Promise<string>;
+  importWallet: (seed: string) => Promise<void>;
 }
 
 const WalletContext = createContext<WalletContextValue | undefined>(undefined);
+const WALLET_STORAGE_KEY = '@xrpl_wallet_data';
 
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
   const [client, setClient] = useState<Client | null>(null);
@@ -42,6 +48,30 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
   }, [client]);
+
+  useEffect(() => {
+    // Attempt to restore a previously saved wallet on mount
+    (async () => {
+      setLoading(true);
+      try {
+        const saved = await AsyncStorage.getItem(WALLET_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved) as { seed: string };
+          if (parsed?.seed) {
+            const restoredWallet = Wallet.fromSeed(parsed.seed);
+            setWallet(restoredWallet);
+            setStatusMessage('Restored wallet from device storage');
+            await connect();
+            await refreshBalance(restoredWallet);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to restore wallet', error);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   const connect = async () => {
     if (loading || connected) return;
@@ -72,6 +102,10 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
 
       const created = await createXRPLWallet(client as Client);
       setWallet(created);
+      await AsyncStorage.setItem(
+        WALLET_STORAGE_KEY,
+        JSON.stringify({ seed: created.seed })
+      );
       setStatusMessage('Wallet ready and funded');
 
       // Give faucet a moment to settle before reading balance
@@ -87,11 +121,12 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const refreshBalance = async () => {
-    if (!client || !wallet) return;
+  const refreshBalance = async (targetWallet?: Wallet) => {
+    const selectedWallet = targetWallet ?? wallet;
+    if (!client || !selectedWallet) return;
 
     try {
-      const bal = await getBalance(client, wallet.address);
+      const bal = await getBalance(client, selectedWallet.address);
       setBalance(bal);
       setStatusMessage(`Balance updated • ${new Date().toLocaleTimeString()}`);
     } catch (error) {
@@ -100,16 +135,58 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const submitPayment = async (destination: string, amount: string) => {
+  const submitPayment = async (destination: string, amount: string, currency: string = 'XRP', issuer?: string) => {
     if (!client || !wallet) {
       throw new Error('Connect and create a wallet first');
     }
 
     setLoading(true);
     try {
-      const result = await sendPayment(client, wallet, destination, amount);
+      const result = await sendPayment(client, wallet, destination, amount, currency, issuer);
       await refreshBalance();
       return result?.result?.hash ?? 'unknown-hash';
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSignedPayment = async (destination: string, amount: string, currency: string = 'XRP', issuer?: string) => {
+    if (!client || !wallet) {
+      throw new Error('Connect and create a wallet first');
+    }
+
+    setLoading(true);
+    try {
+      const prepared = await preparePayment(client, wallet, destination, amount, currency, issuer);
+      const signed = signTransaction(wallet, prepared);
+      return signed.tx_blob;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const importWallet = async (seed: string) => {
+    if (loading) return;
+
+    setLoading(true);
+    try {
+      if (!client || !connected) {
+        await connect();
+      }
+
+      const imported = Wallet.fromSeed(seed);
+      setWallet(imported);
+      await AsyncStorage.setItem(
+        WALLET_STORAGE_KEY,
+        JSON.stringify({ seed: imported.seed })
+      );
+      setStatusMessage('Wallet imported successfully');
+
+      await refreshBalance(imported);
+    } catch (error) {
+      console.error('Failed to import wallet', error);
+      setStatusMessage('Failed to import wallet: Invalid seed');
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -128,6 +205,8 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       setupWallet,
       refreshBalance,
       submitPayment,
+      getSignedPayment,
+      importWallet,
     }),
     [client, wallet, connected, balance, rate, statusMessage, loading]
   );

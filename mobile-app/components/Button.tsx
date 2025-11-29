@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   ViewStyle,
   TextStyle,
+  View,
 } from 'react-native';
 import { typography, borderRadius, shadows } from '../theme';
 import { useThemedColors } from '../context/ThemeContext';
@@ -14,16 +15,39 @@ interface ButtonProps {
   title: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'outline';
+  size?: 'small' | 'medium' | 'large';
   disabled?: boolean;
   loading?: boolean;
   icon?: React.ReactNode;
   style?: ViewStyle;
 }
 
+const BUTTON_SIZES = {
+  small: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  medium: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  large: {
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+  },
+};
+
+const ICON_SIZES = {
+  small: 16,
+  medium: 20,
+  large: 24,
+};
+
 export const Button: React.FC<ButtonProps> = ({
   title,
   onPress,
   variant = 'primary',
+  size = 'medium',
   disabled = false,
   loading = false,
   icon,
@@ -31,8 +55,16 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
   const getButtonStyle = (): ViewStyle[] => {
-    const baseStyle: ViewStyle[] = [styles.button];
+    const sizeStyle = BUTTON_SIZES[size];
+    const baseStyle: ViewStyle[] = [
+      styles.button,
+      {
+        paddingVertical: sizeStyle.paddingVertical,
+        paddingHorizontal: sizeStyle.paddingHorizontal,
+      },
+    ];
 
     if (variant === 'primary') {
       baseStyle.push(styles.primaryButton);
@@ -67,6 +99,23 @@ export const Button: React.FC<ButtonProps> = ({
     return baseStyle;
   };
 
+  // Clone icon element with proper size if it's a React element
+  const renderIcon = () => {
+    if (!icon) return null;
+
+    if (React.isValidElement(icon)) {
+      return (
+        <View style={styles.iconContainer}>
+          {React.cloneElement(icon as React.ReactElement<any>, {
+            size: ICON_SIZES[size],
+          })}
+        </View>
+      );
+    }
+
+    return <View style={styles.iconContainer}>{icon}</View>;
+  };
+
   return (
     <TouchableOpacity
       style={getButtonStyle()}
@@ -78,7 +127,7 @@ export const Button: React.FC<ButtonProps> = ({
         <ActivityIndicator color={variant === 'outline' ? colors.primary : colors.textWhite} />
       ) : (
         <>
-          {icon}
+          {renderIcon()}
           <Text style={getTextStyle()}>{title}</Text>
         </>
       )}
@@ -92,8 +141,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 16,
-      paddingHorizontal: 24,
       borderRadius: borderRadius.xl,
       gap: 8,
       ...shadows.sm,
@@ -122,5 +169,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     disabledText: {
       color: colors.textWhite,
+    },
+    iconContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
     },
   });

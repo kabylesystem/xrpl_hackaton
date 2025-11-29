@@ -1,132 +1,146 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { typography, spacing, borderRadius, shadows } from '../theme';
-import { Button } from '../components';
-import { useWallet } from '../context/WalletContext';
-import { useThemedColors } from '../context/ThemeContext';
+import React, { useMemo, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, SafeAreaView, TextInput } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { typography, spacing, borderRadius, shadows } from "../theme";
+import { Button } from "../components";
+import { useWallet } from "../context/WalletContext";
+import { useThemedColors } from "../context/ThemeContext";
 
 interface WalletSetupScreenProps {
   navigation: any;
 }
 
 export const WalletSetupScreen: React.FC<WalletSetupScreenProps> = ({ navigation }) => {
-  const { connected, wallet, balance, statusMessage, loading, connect, setupWallet, refreshBalance } =
-    useWallet();
+  const { connected, wallet, balance, statusMessage, loading, connect, setupWallet, refreshBalance, importWallet } = useWallet();
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const [seedInput, setSeedInput] = useState("");
 
   const canContinue = connected && !!wallet;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.badge}>Step 1 · XRPL</Text>
-          <Text style={styles.title}>Create your wallet</Text>
-          <Text style={styles.subtitle}>We will connect to XRPL testnet and fund a fresh wallet.</Text>
-        </View>
-        <TouchableOpacity onPress={() => navigation.replace('Home')} disabled={!canContinue}>
-          <Text style={[styles.skip, !canContinue && styles.skipDisabled]}>Skip</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <View style={[styles.iconCircle, { backgroundColor: `${colors.primary}15` }]}>
-            <Ionicons
-              name={connected ? 'checkmark-circle' : 'link-outline'}
-              size={28}
-              color={colors.primary}
-            />
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.badge}>Step 1 · XRPL</Text>
+            <Text style={styles.title}>Create your wallet</Text>
+            <Text style={styles.subtitle}>We will connect to XRPL testnet and fund a fresh wallet.</Text>
           </View>
-          <View style={styles.rowText}>
-            <Text style={styles.cardTitle}>Connect to XRPL Testnet</Text>
-            <Text style={styles.cardSubtitle}>
-              Secure connection to s.altnet.rippletest.net:51233
-            </Text>
-          </View>
-          <TouchableOpacity onPress={connect} disabled={loading || connected}>
-            {loading && !connected ? (
-              <ActivityIndicator />
-            ) : (
-              <Ionicons
-                name="refresh"
-                size={22}
-                color={connected ? colors.secondary : colors.textSecondary}
-              />
-            )}
+          <TouchableOpacity onPress={() => navigation.replace("Home")} disabled={!canContinue}>
+            <Text style={[styles.skip, !canContinue && styles.skipDisabled]}>Skip</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.row}>
-          <View style={[styles.iconCircle, { backgroundColor: `${colors.secondary}15` }]}>
-            <Ionicons
-              name={wallet ? 'wallet' : 'shield-checkmark-outline'}
-              size={28}
-              color={colors.secondary}
-            />
-          </View>
-          <View style={styles.rowText}>
-            <Text style={styles.cardTitle}>{wallet ? 'Wallet ready' : 'Create + fund wallet'}</Text>
-            <Text style={styles.cardSubtitle}>
-              Auto-fund with faucet and fetch your first balance.
-            </Text>
-          </View>
-          <TouchableOpacity onPress={setupWallet} disabled={loading || !connected || !!wallet}>
-            {loading && !wallet ? (
-              <ActivityIndicator />
-            ) : (
-              <Ionicons
-                name="sparkles-outline"
-                size={22}
-                color={wallet ? colors.secondary : colors.textSecondary}
-              />
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {wallet && (
-          <View style={styles.walletBox}>
-            <Text style={styles.walletLabel}>Wallet Address</Text>
-            <Text style={styles.walletValue} numberOfLines={1}>
-              {wallet.address}
-            </Text>
-            <View style={styles.balanceRow}>
-              <View style={styles.balanceChip}>
-                <Ionicons name="flash-outline" size={14} color={colors.secondary} />
-                <Text style={styles.balanceChipText}>{balance} XRP</Text>
-              </View>
-              <TouchableOpacity onPress={refreshBalance}>
-                <Text style={styles.refresh}>Refresh balance</Text>
-              </TouchableOpacity>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={[styles.iconCircle, { backgroundColor: `${colors.primary}15` }]}>
+              <Ionicons name={connected ? "checkmark-circle" : "link-outline"} size={28} color={colors.primary} />
             </View>
+            <View style={styles.rowText}>
+              <Text style={styles.cardTitle}>Connect to XRPL Testnet</Text>
+              <Text style={styles.cardSubtitle}>Secure connection to s.altnet.rippletest.net:51233</Text>
+            </View>
+            <TouchableOpacity onPress={connect} disabled={loading || connected}>
+              {loading && !connected ? (
+                <ActivityIndicator />
+              ) : (
+                <Ionicons name="refresh" size={22} color={connected ? colors.secondary : colors.textSecondary} />
+              )}
+            </TouchableOpacity>
           </View>
-        )}
 
-        {statusMessage && <Text style={styles.status}>{statusMessage}</Text>}
-      </View>
+          <View style={styles.row}>
+            <View style={[styles.iconCircle, { backgroundColor: `${colors.secondary}15` }]}>
+              <Ionicons name={wallet ? "wallet" : "shield-checkmark-outline"} size={28} color={colors.secondary} />
+            </View>
+            <View style={styles.rowText}>
+              <Text style={styles.cardTitle}>{wallet ? "Wallet ready" : "Create + fund wallet"}</Text>
+              <Text style={styles.cardSubtitle}>Auto-fund with faucet and fetch your first balance.</Text>
+            </View>
+            <TouchableOpacity onPress={setupWallet} disabled={loading || !connected || !!wallet}>
+              {loading && !wallet ? (
+                <ActivityIndicator />
+              ) : (
+                <Ionicons name="sparkles-outline" size={22} color={wallet ? colors.secondary : colors.textSecondary} />
+              )}
+            </TouchableOpacity>
+          </View>
 
-      <Button
-        title={canContinue ? 'Go to dashboard' : 'Connect & create wallet'}
-        onPress={() => {
-          if (canContinue) {
-            navigation.replace('Home');
-          } else if (!connected) {
-            connect();
-          } else {
-            setupWallet();
-          }
-        }}
-        loading={loading}
-        disabled={loading}
-      />
-    </ScrollView>
+          {!wallet && (
+            <View style={styles.importSection}>
+              <View style={styles.separatorContainer}>
+                <View style={styles.separatorLine} />
+                <Text style={styles.separatorText}>OR</Text>
+                <View style={styles.separatorLine} />
+              </View>
+
+              <Text style={styles.label}>Import existing wallet</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter family seed (s...)"
+                placeholderTextColor={colors.textTertiary}
+                value={seedInput}
+                onChangeText={setSeedInput}
+                autoCapitalize="none"
+                secureTextEntry
+              />
+              <Button
+                title="Import Wallet"
+                onPress={() => importWallet(seedInput)}
+                disabled={loading || !seedInput}
+                variant="secondary"
+                style={{ marginTop: spacing.sm }}
+              />
+            </View>
+          )}
+
+          {wallet && (
+            <View style={styles.walletBox}>
+              <Text style={styles.walletLabel}>Wallet Address</Text>
+              <Text style={styles.walletValue} numberOfLines={1}>
+                {wallet.address}
+              </Text>
+              <View style={styles.balanceRow}>
+                <View style={styles.balanceChip}>
+                  <Ionicons name="flash-outline" size={14} color={colors.secondary} />
+                  <Text style={styles.balanceChipText}>{balance} XRP</Text>
+                </View>
+                <TouchableOpacity onPress={() => refreshBalance()}>
+                  <Text style={styles.refresh}>Refresh balance</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {statusMessage && <Text style={styles.status}>{statusMessage}</Text>}
+        </View>
+
+        <Button
+          title={canContinue ? "Go to dashboard" : "Connect & create wallet"}
+          onPress={() => {
+            if (canContinue) {
+              navigation.replace("Home");
+            } else if (!connected) {
+              connect();
+            } else {
+              setupWallet();
+            }
+          }}
+          loading={loading}
+          disabled={loading}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -136,9 +150,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: spacing.lg,
     },
     header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
     },
     badge: {
       ...typography.caption,
@@ -169,16 +183,16 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: spacing.md,
     },
     row: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.md,
     },
     iconCircle: {
       width: 52,
       height: 52,
       borderRadius: 26,
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: "center",
+      alignItems: "center",
     },
     rowText: {
       flex: 1,
@@ -208,14 +222,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       marginTop: spacing.xs,
     },
     balanceRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
       marginTop: spacing.sm,
     },
     balanceChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: 6,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.xs,
@@ -234,5 +248,38 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       ...typography.caption,
       color: colors.textSecondary,
       marginTop: spacing.sm,
+    },
+    importSection: {
+      marginTop: spacing.sm,
+    },
+    separatorContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginVertical: spacing.md,
+      gap: spacing.md,
+    },
+    separatorLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    separatorText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    label: {
+      ...typography.caption,
+      color: colors.textPrimary,
+      marginBottom: spacing.xs,
+    },
+    input: {
+      backgroundColor: colors.background,
+      borderRadius: borderRadius.lg,
+      padding: spacing.md,
+      color: colors.textPrimary,
+      ...typography.body,
+      marginBottom: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
   });

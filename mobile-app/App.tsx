@@ -1,4 +1,5 @@
 import "react-native-gesture-handler";
+import "./utils/polyfills";
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
@@ -14,8 +15,8 @@ import { ReceiveScreen } from "./screens/ReceiveScreen";
 import { PaymentRequestScreen } from "./screens/PaymentRequestScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { SMSPaymentScreen } from "./screens/SMSPaymentScreen";
-import { NFCPaymentScreen } from "./screens/NFCPaymentScreen";
 import { QRPaymentScreen } from "./screens/QRPaymentScreen";
+import { PaymentSuccessScreen } from "./screens/PaymentSuccessScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 
 const Stack = createStackNavigator<any>();
@@ -40,8 +41,8 @@ const AppNavigator = () => {
           <Stack.Screen name="PaymentRequest" component={PaymentRequestScreen} />
           <Stack.Screen name="History" component={HistoryScreen} />
           <Stack.Screen name="SMSPayment" component={SMSPaymentScreen} />
-          <Stack.Screen name="NFCPayment" component={NFCPaymentScreen} />
           <Stack.Screen name="QRPayment" component={QRPaymentScreen} />
+          <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
         </Stack.Navigator>
       </NavigationContainer>

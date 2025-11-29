@@ -1,28 +1,39 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { typography, spacing, borderRadius, shadows } from '../theme';
-import { Button, Keypad } from '../components';
-import { useWallet } from '../context/WalletContext';
-import { useThemedColors } from '../context/ThemeContext';
+import React, { useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { typography, spacing, borderRadius, shadows } from "../theme";
+import { Button, Keypad } from "../components";
+import { useWallet } from "../context/WalletContext";
+import { useThemedColors } from "../context/ThemeContext";
 
 interface ReceiveScreenProps {
   navigation: any;
 }
 
 export const ReceiveScreen: React.FC<ReceiveScreenProps> = ({ navigation }) => {
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState("");
   const { wallet } = useWallet();
   const rate = 1600;
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const amountNGN = Number.parseFloat(amount) || 0;
-  const amountUSDC = useMemo(() => (amountNGN / rate).toFixed(2), [amountNGN, rate]);
+  const amountToken = useMemo(
+    () => (amountNGN / rate).toFixed(2),
+    [amountNGN, rate]
+  );
+  const tokenSymbol = "XRP";
 
   const onNumberPress = (num: string) => {
-    if (num === '.' && amount.includes('.')) return;
-    if (amount === '0' && num !== '.') {
+    if (num === "." && amount.includes(".")) return;
+    if (amount === "0" && num !== ".") {
       setAmount(num);
     } else {
       setAmount(amount + num);
@@ -34,51 +45,59 @@ export const ReceiveScreen: React.FC<ReceiveScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Receive payment</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Receive payment</Text>
+        </View>
 
-      <View style={styles.amountBox}>
-        <Text style={styles.helper}>Request amount in NGN</Text>
-        <Text style={styles.amount}>
-          {amount || '0'} <Text style={styles.amountSuffix}>NGN</Text>
-        </Text>
-        <Text style={styles.converted}>≈ {amountUSDC} USDC</Text>
-      </View>
+        <View style={styles.amountBox}>
+          <Text style={styles.helper}>Request amount in NGN</Text>
+          <Text style={styles.amount}>
+            {amount || "0"} <Text style={styles.amountSuffix}>NGN</Text>
+          </Text>
+          <Text style={styles.converted}>
+            ≈ {amountToken} {tokenSymbol}
+          </Text>
+        </View>
 
-      <Keypad onNumberPress={onNumberPress} onDelete={onDelete} />
+        <Keypad onNumberPress={onNumberPress} onDelete={onDelete} />
 
-      <View style={styles.actions}>
-        <Button
-          title="Generate QR code"
-          variant="secondary"
-          onPress={() =>
-            navigation.navigate('PaymentRequest', {
-              amount,
-              amountUSDC,
-              address: wallet?.address,
-            })
-          }
-          disabled={amountNGN === 0 || !wallet}
-        />
-        <Button
-          title="Enable NFC receive"
-          variant="outline"
-          onPress={() => navigation.navigate('NFCPayment', { amount, amountUSDC })}
-          disabled={amountNGN === 0}
-          icon={<Ionicons name="phone-portrait-outline" size={20} color={colors.primary} />}
-        />
-      </View>
-    </ScrollView>
+        <View style={styles.actions}>
+          <Button
+            title="Generate QR code"
+            variant="secondary"
+            onPress={() =>
+              navigation.navigate("PaymentRequest", {
+                amount,
+                amountToken,
+                tokenSymbol,
+                address: wallet?.address,
+              })
+            }
+            disabled={amountNGN === 0 || !wallet}
+          />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -88,8 +107,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: spacing.lg,
     },
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.md,
     },
     iconButton: {
@@ -97,8 +116,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 42,
       borderRadius: 21,
       backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       ...shadows.sm,
     },
     title: {
@@ -106,7 +125,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textPrimary,
     },
     amountBox: {
-      alignItems: 'center',
+      alignItems: "center",
       gap: spacing.sm,
       paddingVertical: spacing.md,
     },
