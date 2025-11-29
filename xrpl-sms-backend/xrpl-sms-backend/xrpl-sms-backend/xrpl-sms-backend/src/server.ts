@@ -1,21 +1,20 @@
-import express, { Request, Response } from 'express';
-import twilio from 'twilio';
-import * as xrpl from 'xrpl';
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
+import express, { Request, Response } from "express";
+import twilio from "twilio";
+import * as xrpl from "xrpl";
 
-dotenv.config();
+// Load .env
+dotenv.config({ path: __dirname + "/../.env" });
 
+console.log("=== ENV LOADED ===");
+console.log("SID:", process.env.TWILIO_ACCOUNT_SID);
+console.log("TOKEN:", process.env.TWILIO_AUTH_TOKEN ? "OK" : "MISSING");
+console.log("PHONE:", process.env.TWILIO_PHONE_NUMBER);
+console.log("==================\n");
+
+// Express
 const app = express();
 app.use(express.urlencoded({ extended: false }));
-
-// Types
-interface User {
-  xrpl_address: string;
-}
-
-interface UserDatabase {
-  [phone: string]: User;
-}
 
 // Twilio client
 const twilioClient = twilio(
@@ -23,67 +22,80 @@ const twilioClient = twilio(
   process.env.TWILIO_AUTH_TOKEN!
 );
 
-// Base de données utilisateurs
-// ⚠️ On stocke SEULEMENT l'adresse (pas la seed, c'est l'app qui signe)
+// Types
+interface User {
+  xrpl_address: string;
+}
+interface UserDatabase {
+  [phone: string]: User;
+}
+
+// Fake DB
 const users: UserDatabase = {
-  '+33759687877': {
-    xrpl_address: 'rsGQHatLEmGzgjvYksFEyV3UkEi61Low5J'
+  "+33759687877": {
+    xrpl_address: "rsGQHatLEmGzgjvYksFEyV3UkEi61Low5J"
   }
 };
 
-// Oracle NGN/USD (simulé)
+// FX Rate
 function getNGNRate(): number {
-  return 1600; // 1 USD = 1600 NGN
+  return 1600;
 }
 
-// 🎯 ENDPOINT 1 : Paiement classique (serveur signe)
-// Pour les cas où l'utilisateur a Internet et veut que le serveur gère tout
-app.post('/sms/receive', async (req: Request, res: Response): Promise<void> => {
-  const from: string = req.body.From;
-  const body: string = req.body.Body;
+// -------------------------------
+// 🔥 MAIN SMS ENTRY POINT
+// -------------------------------
+app.post("/sms/receive", async (req: Request, res: Response): Promise<void> => {
+  const from = req.body.From;
+  const body = req.body.Body;
 
-  console.log(`\n📨 SMS reçu de ${from}: "${body}"`);
+  console.log(`📨 SMS received from ${from}: "${body.slice(0, 50)}..."`);
 
   try {
-    // Détecte si c'est une transaction signée ou un montant simple
-    if (body.trim().startsWith('{') || body.includes('tx_blob')) {
-      // C'est une transaction signée → on la diffuse
+    // Detect if it's a signed transaction (JSON or raw hexa)
+    const isHexTx = body.trim().match(/^[0-9A-Fa-f]{100,}$/);
+    const isJsonTx = body.trim().startsWith("{") || body.includes("tx_blob");
+    
+    if (isHexTx || isJsonTx) {
       await handleSignedTransaction(from, body);
     } else {
-      // C'est un montant simple → on traite normalement
       await handleSimplePayment(from, body);
     }
 
-    res.send('<Response></Response>');
+    res.type("text/xml");
+    res.send("<Response></Response>");
 
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-    console.error('❌ ERREUR:', errorMessage);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("❌ ERROR:", msg);
 
     try {
+      // ✅ Short error message
       await twilioClient.messages.create({
         from: process.env.TWILIO_PHONE_NUMBER!,
         to: from,
-        body: `❌ Paiement échoué:\n${errorMessage.slice(0, 100)}`
+        body: `Payment failed: ${msg.slice(0, 100)}`
       });
-    } catch (smsError) {
-      console.error('❌ Impossible d\'envoyer le SMS d\'erreur:', smsError);
+      console.log("📨 Error SMS sent");
+    } catch (smsErr) {
+      console.error("❌ SMS SENDING ERROR:", smsErr);
     }
 
-    res.send('<Response></Response>');
+    res.type("text/xml");
+    res.send("<Response></Response>");
   }
 });
 
-// 🔥 FONCTION : Diffuser une transaction déjà signée (envoyée par l'app)
-async function handleSignedTransaction(from: string, body: string): Promise<void> {
-  console.log('🔐 Transaction signée détectée');
+// -------------------------------
+// 🔐 Signed transaction handler
+// -------------------------------
+async function handleSignedTransaction(from: string, body: string) {
+  console.log("🔐 Signed transaction detected");
 
-  // Parse le tx_blob depuis le SMS
   let signedTxBlob: string;
-  
+
   try {
-    // Format attendu: soit JSON, soit juste le tx_blob
-    if (body.includes('tx_blob')) {
+    if (body.includes("tx_blob")) {
       const parsed = JSON.parse(body);
       signedTxBlob = parsed.tx_blob;
     } else {
@@ -93,101 +105,140 @@ async function handleSignedTransaction(from: string, body: string): Promise<void
     signedTxBlob = body.trim();
   }
 
-  console.log('📦 tx_blob:', signedTxBlob.slice(0, 50) + '...');
+  console.log("📦 tx_blob:", signedTxBlob.slice(0, 50), "...");
 
-  // Connexion au testnet
-  const client = new xrpl.Client('wss://s.altnet.rippletest.net:51233');
+  // Connect to XRPL
+  const client = new xrpl.Client("wss://s.altnet.rippletest.net:51233");
   await client.connect();
-  console.log('✅ Connecté au testnet');
+  console.log("✅ Connected to XRPL testnet");
 
-  // DIFFUSION de la transaction (sans re-signer)
-  console.log('📤 Diffusion de la transaction...');
+  // Broadcast transaction
+  console.log("📤 Broadcasting transaction...");
   const result = await client.submit(signedTxBlob);
-
   await client.disconnect();
 
-  if (result.result.engine_result === 'tesSUCCESS' || 
-      result.result.engine_result === 'terQUEUED') {
-    
-    const hash = result.result.tx_json.hash || 'N/A';
-    console.log(`✅ Transaction diffusée! Hash: ${hash}`);
+  console.log("📊 Result:", result.result.engine_result);
 
-    // Confirmation SMS
+  if (
+    result.result.engine_result === "tesSUCCESS" ||
+    result.result.engine_result === "terQUEUED"
+  ) {
+    const hash = result.result.tx_json.hash || "N/A";
+    console.log("✅ Transaction successfully broadcast!");
+    console.log("🔗 Hash:", hash);
+
+    // ✅ SHORT confirmation SMS (under 160 chars)
     await twilioClient.messages.create({
       from: process.env.TWILIO_PHONE_NUMBER!,
       to: from,
-      body: `✅ Paiement diffusé avec succès!\nTX: ${hash.slice(0, 12)}...`
+      body: `Payment confirmed! TX: ${hash.slice(0, 12)}`
     });
 
-    console.log('📨 SMS de confirmation envoyé');
+    console.log("📨 Confirmation SMS sent");
+
   } else {
-    throw new Error(`Diffusion échouée: ${result.result.engine_result}`);
+    throw new Error(`Broadcast failed: ${result.result.engine_result}`);
   }
 }
 
-// 🔥 FONCTION : Paiement simple (le serveur gère tout)
-async function handleSimplePayment(from: string, body: string): Promise<void> {
-  // Parse le montant
+// -------------------------------
+// 💸 Simple PAY (for testing)
+// -------------------------------
+async function handleSimplePayment(from: string, body: string) {
   const match = body.match(/PAY\s+(\d+)/i);
   if (!match) {
-    throw new Error('Format invalide. Utilise: PAY [montant]');
-  }
-  const amountNGN: number = parseInt(match[1]);
-
-  console.log(`💰 Montant demandé: ${amountNGN} NGN`);
-
-  // Conversion NGN → XRP
-  const rate: number = getNGNRate();
-  const amountXRP: string = (amountNGN / rate / 100).toFixed(6);
-  
-  console.log(`💱 Conversion: ${amountNGN} NGN = ${amountXRP} XRP (taux: ${rate})`);
-
-  // Récupération utilisateur
-  const user = users[from];
-  if (!user) {
-    throw new Error(`Utilisateur non enregistré. Numéro: ${from}`);
+    throw new Error("Invalid format. Send a signed XRPL transaction or use: PAY [amount]");
   }
 
-  console.log(`👤 Wallet: ${user.xrpl_address}`);
-
-  // ⚠️ PROBLÈME : On n'a pas la seed ici !
-  // Cette fonction ne marchera que si tu stockes aussi les seeds
-  // OU si tu utilises un wallet "serveur" qui envoie l'argent
-  
-  throw new Error('Mode "PAY simple" nécessite que l\'app signe la transaction');
+  // For now, we only handle signed transactions
+  throw new Error("Simple PAY mode requires the app to sign the transaction. Send a tx_blob.");
 }
 
-// Route de test
-app.get('/', (req: Request, res: Response) => {
-  res.send(`
-    🚀 Serveur SMS XRPL opérationnel!
-    
-    📱 Numéro configuré: ${process.env.TWILIO_PHONE_NUMBER}
-    
-    💡 Formats acceptés:
-    - Transaction signée (JSON avec tx_blob)
-    - Transaction signée (tx_blob brut)
-    
-    ⚠️ Le mode "PAY 1200" simple nécessite que l'app signe
-  `);
-});
-
-// 🆕 ENDPOINT : Obtenir le taux de conversion (pour l'app)
-app.get('/price', (req: Request, res: Response) => {
+// -------------------------------
+// 📊 GET PRICE (for the app)
+// -------------------------------
+app.get("/price", (req, res) => {
   const rate = getNGNRate();
   res.json({
     rate: rate,
     timestamp: new Date().toISOString(),
-    pair: 'NGN/USD'
+    pair: "NGN/USD"
   });
 });
 
-// Démarrage
+// -------------------------------
+// 🌍 TEST PAGE
+// -------------------------------
+app.get("/", (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>XRPL SMS Backend</title>
+      <style>
+        body { 
+          font-family: monospace; 
+          padding: 40px;
+          background: #1a1a1a;
+          color: #0f0;
+        }
+        h1 { color: #0f0; }
+        .info { margin: 10px 0; }
+        .endpoint { 
+          background: #2a2a2a; 
+          padding: 10px; 
+          margin: 10px 0;
+          border-left: 4px solid #0f0;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>🚀 XRPL SMS Server Operational!</h1>
+      
+      <div class="info">
+        <strong>📱 Twilio Number:</strong> ${process.env.TWILIO_PHONE_NUMBER}
+      </div>
+      
+      <div class="info">
+        <strong>👤 Configured User:</strong> +33759687877
+      </div>
+      
+      <div class="info">
+        <strong>💳 Wallet:</strong> rsGQHatLEmGzgjvYksFEyV3UkEi61Low5J
+      </div>
+      
+      <h2>📡 Available Endpoints:</h2>
+      
+      <div class="endpoint">
+        <strong>GET /price</strong><br>
+        Returns NGN/USD conversion rate
+      </div>
+      
+      <div class="endpoint">
+        <strong>POST /sms/receive</strong><br>
+        Twilio webhook to receive SMS<br>
+        (configured automatically)
+      </div>
+      
+      <h2>💡 To test:</h2>
+      <p>Send an SMS to <strong>${process.env.TWILIO_PHONE_NUMBER}</strong></p>
+      <p>Format: A signed XRPL transaction (tx_blob)</p>
+      
+      <h2>📊 Recent Status:</h2>
+      <p>Server running since: ${new Date().toISOString()}</p>
+    </body>
+    </html>
+  `);
+});
+
+// -------------------------------
+// 🚀 LAUNCH SERVER
+// -------------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`\n🌍 Serveur démarré sur http://localhost:${PORT}`);
-  console.log(`📱 Numéro Twilio: ${process.env.TWILIO_PHONE_NUMBER}`);
-  console.log(`👤 Utilisateur configuré: +33759687888`);
+  console.log(`🌍 Server started on http://localhost:${PORT}`);
+  console.log(`📱 Twilio Number: ${process.env.TWILIO_PHONE_NUMBER}`);
+  console.log(`👤 Configured User: +33759687877`);
   console.log(`💳 Wallet: rsGQHatLEmGzgjvYksFEyV3UkEi61Low5J`);
-  console.log(`\n💡 Prêt à recevoir des transactions signées par SMS!\n`);
+  console.log(`\n💡 Ready to receive signed transactions via SMS!\n`);
 });
