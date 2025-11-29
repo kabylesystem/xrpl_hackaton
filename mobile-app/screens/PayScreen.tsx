@@ -52,12 +52,12 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
         <Keypad onNumberPress={onNumberPress} onDelete={onDelete} />
 
         <View style={styles.actions}>
-          <Button
-            title="Pay via NFC"
-            onPress={() => navigation.navigate('NFCPayment', { amount, amountUSDC })}
-            disabled={amountNGN === 0}
-            icon={<Ionicons name="phone-portrait-outline" size={20} color={colors.textWhite} />}
-          />
+        <Button
+          title="Send via Bluetooth"
+          onPress={() => navigation.navigate('NFCPayment', { amount, amountUSDC })}
+          disabled={amountNGN === 0}
+          icon={<Ionicons name="bluetooth" size={20} color={colors.textWhite} />}
+        />
           <Button
             title="Pay via QR Scan"
             variant="outline"

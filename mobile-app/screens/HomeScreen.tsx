@@ -1,82 +1,122 @@
-import React, { useMemo } from 'react';
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useWallet } from '../context/WalletContext';
-import { WalletCard, TransactionListItem } from '../components';
-import { typography, spacing, borderRadius, shadows } from '../theme';
-import { useThemedColors } from '../context/ThemeContext';
+import React, { useMemo } from "react";
+import {
+  ScrollView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useWallet } from "../context/WalletContext";
+import { WalletCard, TransactionListItem } from "../components";
+import { typography, spacing, borderRadius, shadows } from "../theme";
+import { useThemedColors } from "../context/ThemeContext";
+import { useSettings } from "../context/SettingsContext";
 
 interface HomeScreenProps {
   navigation: any;
 }
 
 const sampleTransactions = [
-  { type: 'sent', amount: '1200', currency: 'NGN', description: 'Café MamaKoko', date: 'Today' },
-  { type: 'received', amount: '0.5', currency: 'XRP', description: 'Testnet faucet', date: 'Yesterday' },
-  { type: 'sent', amount: '800', currency: 'NGN', description: 'SMS payment', date: 'Nov 28' },
+  {
+    type: "sent",
+    amount: "1200",
+    currency: "NGN",
+    description: "Café MamaKoko",
+    date: "Today",
+  },
+  {
+    type: "received",
+    amount: "0.5",
+    currency: "XRP",
+    description: "Testnet faucet",
+    date: "Yesterday",
+  },
+  {
+    type: "sent",
+    amount: "800",
+    currency: "NGN",
+    description: "SMS payment",
+    date: "Nov 28",
+  },
 ];
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const { wallet, balance, rate, connected, statusMessage, refreshBalance } = useWallet();
+  const { wallet, balance, rate, connected, statusMessage, refreshBalance } =
+    useWallet();
+  const { settings } = useSettings();
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const quickActions = [
     {
-      label: 'Pay',
-      helper: 'Send money',
-      icon: 'send',
+      label: "Pay",
+      helper: "Send money",
+      icon: "send",
       color: colors.primary,
-      target: 'Pay',
+      target: "Pay",
     },
     {
-      label: 'Receive',
-      helper: 'Get paid',
-      icon: 'download',
+      label: "Receive",
+      helper: "Get paid",
+      icon: "download",
       color: colors.secondary,
-      target: 'Receive',
+      target: "Receive",
     },
     {
-      label: 'SMS',
-      helper: 'Offline mode',
-      icon: 'chatbubbles',
+      label: "SMS",
+      helper: "Offline mode",
+      icon: "chatbubbles",
       color: colors.secondary,
-      target: 'SMSPayment',
+      target: "SMSPayment",
     },
     {
-      label: 'History',
-      helper: 'Transactions',
-      icon: 'time',
+      label: "History",
+      helper: "Transactions",
+      icon: "time",
       color: colors.primary,
-      target: 'History',
+      target: "History",
     },
   ];
 
   const numericBalance = Number.parseFloat(balance) || 0;
-  const converted = (numericBalance * rate).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const converted = (numericBalance * rate).toLocaleString("en-US", {
+    maximumFractionDigits: 0,
+  });
+  const displayName = settings.displayName || "User";
+  const transactions = sampleTransactions.map((tx) => ({
+    ...tx,
+    description:
+      tx.description === "Café MamaKoko"
+        ? displayName
+        : tx.description.replace("SMS payment", `Payment from ${displayName}`),
+  }));
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <TouchableOpacity
-        style={styles.burgerFloating}
-        onPress={() => navigation.navigate('Settings')}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="menu" size={22} color={colors.textPrimary} />
-      </TouchableOpacity>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
-        stickyHeaderIndices={[0]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.badge}>{connected ? 'Connected' : 'Offline'}</Text>
-            <Text style={styles.title}>TundePay</Text>
+            <Text style={styles.badge}>
+              {connected ? "Connected" : "Offline"}
+            </Text>
+            <Text style={styles.title}>Hi, {displayName}</Text>
             <Text style={styles.subtitle} numberOfLines={2}>
-              NGN ↔ USDC bridge on XRPL testnet. {wallet ? 'Wallet ready.' : 'Create your wallet.'}
+              NGN ↔ USDC bridge on XRPL testnet.{" "}
+              {wallet ? "Wallet ready." : "Create your wallet."}
             </Text>
           </View>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => navigation.navigate("Settings")}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="menu" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
         </View>
 
         <WalletCard
@@ -96,8 +136,17 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 style={styles.quickCard}
                 onPress={() => navigation.navigate(action.target)}
               >
-                <View style={[styles.quickIcon, { backgroundColor: `${action.color}15` }]}>
-                  <Ionicons name={action.icon as any} size={20} color={action.color} />
+                <View
+                  style={[
+                    styles.quickIcon,
+                    { backgroundColor: `${action.color}15` },
+                  ]}
+                >
+                  <Ionicons
+                    name={action.icon as any}
+                    size={20}
+                    color={action.color}
+                  />
                 </View>
                 <Text style={styles.quickLabel}>{action.label}</Text>
                 <Text style={styles.quickHelper}>{action.helper}</Text>
@@ -110,7 +159,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <View style={styles.sectionHeader}>
             <View>
               <Text style={styles.sectionTitle}>Live oracle</Text>
-              <Text style={styles.helper}>1 USD ≈ {rate} NGN (refreshed locally)</Text>
+              <Text style={styles.helper}>
+                1 USD ≈ {rate} NGN (refreshed locally)
+              </Text>
             </View>
             <TouchableOpacity onPress={() => refreshBalance()}>
               <Ionicons name="refresh" size={20} color={colors.primary} />
@@ -119,36 +170,45 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>XRPL wallet</Text>
-              <Text style={styles.infoValue}>{wallet ? 'Active' : 'Missing'}</Text>
+              <Text style={styles.infoValue}>
+                {wallet ? "Active" : "Missing"}
+              </Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Balance</Text>
-              <Text style={styles.infoValue}>{numericBalance.toFixed(2)} XRP</Text>
+              <Text style={styles.infoValue}>
+                {numericBalance.toFixed(2)} XRP
+              </Text>
             </View>
             {wallet && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Address</Text>
-                <Text style={[styles.infoValue, styles.address]} numberOfLines={1}>
+                <Text
+                  style={[styles.infoValue, styles.address]}
+                  numberOfLines={1}
+                >
                   {wallet.address}
                 </Text>
               </View>
             )}
-            {statusMessage && <Text style={styles.helper}>{statusMessage}</Text>}
+            {statusMessage && (
+              <Text style={styles.helper}>{statusMessage}</Text>
+            )}
           </View>
         </View>
 
         <View style={[styles.section, { paddingBottom: spacing.xl }]}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent activity</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('History')}>
+            <TouchableOpacity onPress={() => navigation.navigate("History")}>
               <Text style={styles.link}>See all</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.listStack}>
-            {sampleTransactions.map((tx, index) => (
+            {transactions.map((tx, index) => (
               <TransactionListItem
                 key={`${tx.description}-${index}`}
-                type={tx.type as 'sent' | 'received'}
+                type={tx.type as "sent" | "received"}
                 amount={tx.amount}
                 currency={tx.currency}
                 description={tx.description}
@@ -177,26 +237,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: spacing.lg,
     },
     header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
       paddingVertical: spacing.md,
       backgroundColor: colors.background,
       zIndex: 10,
-      paddingRight: 64,
-    },
-    burgerFloating: {
-      position: 'absolute',
-      top: spacing.lg,
-      right: spacing.lg,
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-      ...shadows.sm,
-      zIndex: 20,
     },
     badge: {
       ...typography.caption,
@@ -217,17 +263,17 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 44,
       borderRadius: 22,
       backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       ...shadows.sm,
     },
     section: {
       gap: spacing.sm,
     },
     sectionHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
     },
     sectionTitle: {
       ...typography.h3,
@@ -238,12 +284,12 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
     },
     quickGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexDirection: "row",
+      flexWrap: "wrap",
       gap: spacing.md,
     },
     quickCard: {
-      width: '47%',
+      width: "47%",
       backgroundColor: colors.surface,
       borderRadius: borderRadius.xl,
       padding: spacing.md,
@@ -253,8 +299,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       width: 44,
       height: 44,
       borderRadius: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       marginBottom: spacing.sm,
     },
     quickLabel: {
@@ -274,9 +320,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: spacing.sm,
     },
     infoRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
     },
     infoLabel: {
       ...typography.body,
@@ -286,7 +332,7 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       ...typography.bodyBold,
       color: colors.textPrimary,
       flexShrink: 1,
-      textAlign: 'right',
+      textAlign: "right",
     },
     address: {
       fontSize: 12,

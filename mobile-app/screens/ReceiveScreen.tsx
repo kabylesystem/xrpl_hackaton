@@ -66,13 +66,13 @@ export const ReceiveScreen: React.FC<ReceiveScreenProps> = ({ navigation }) => {
             }
             disabled={amountNGN === 0 || !wallet}
           />
-          <Button
-            title="Enable NFC receive"
-            variant="outline"
-            onPress={() => navigation.navigate('NFCPayment', { amount, amountUSDC })}
-            disabled={amountNGN === 0}
-            icon={<Ionicons name="phone-portrait-outline" size={20} color={colors.primary} />}
-          />
+        <Button
+          title="Receive via Bluetooth"
+          variant="outline"
+          onPress={() => navigation.navigate('NFCPayment', { amount, amountUSDC })}
+          disabled={amountNGN === 0}
+          icon={<Ionicons name="bluetooth" size={20} color={colors.primary} />}
+        />
         </View>
       </ScrollView>
     </SafeAreaView>

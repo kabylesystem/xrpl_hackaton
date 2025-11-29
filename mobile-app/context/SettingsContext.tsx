@@ -2,19 +2,16 @@ import React, { createContext, useState, useContext, useEffect, ReactNode } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Settings {
-  autoScale: boolean;
-  manualMaxBalance: number;
+  displayName: string;
 }
 
 interface SettingsContextType {
   settings: Settings;
   updateSettings: (newSettings: Partial<Settings>) => void;
-  getMaxBalance: (currentBalance: number) => number;
 }
 
 const defaultSettings: Settings = {
-  autoScale: true,
-  manualMaxBalance: 10000,
+  displayName: 'Tunde',
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -54,28 +51,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     saveSettings(updated);
   };
 
-  const getMaxBalance = (currentBalance: number): number => {
-    if (!settings.autoScale) {
-      return settings.manualMaxBalance;
-    }
-
-    // Auto scale logic
-    if (currentBalance < 100) {
-      return 250;
-    } else if (currentBalance < 500) {
-      return 1000;
-    } else if (currentBalance < 1000) {
-      return 1500;
-    } else if (currentBalance < 5000) {
-      return 10000;
-    } else {
-      // For balances >= 5000, use balance * 2
-      return currentBalance * 2;
-    }
-  };
-
   return (
-    <SettingsContext.Provider value={{ settings, updateSettings, getMaxBalance }}>
+    <SettingsContext.Provider value={{ settings, updateSettings }}>
       {children}
     </SettingsContext.Provider>
   );
