@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useWallet } from '../context/WalletContext';
 import { WalletCard, TransactionListItem } from '../components';
@@ -55,104 +55,115 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const converted = (numericBalance * rate).toLocaleString('en-US', { maximumFractionDigits: 0 });
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.badge}>{connected ? 'Connected' : 'Offline'}</Text>
-          <Text style={styles.title}>TundePay</Text>
-          <Text style={styles.subtitle}>
-            NGN ↔ USDC bridge on XRPL testnet. {wallet ? 'Wallet ready.' : 'Create your wallet.'}
-          </Text>
-        </View>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Settings')}>
-          <Ionicons name="menu" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
-
-      <WalletCard
-        balance={numericBalance.toFixed(2)}
-        convertedAmount={converted}
-        rate={`1 USD ≈ ${rate} NGN`}
-        currencyLabel="XRP"
-        convertedLabel="NGN"
-      />
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick actions</Text>
-        <View style={styles.quickGrid}>
-          {quickActions.map((action) => (
-            <TouchableOpacity
-              key={action.label}
-              style={styles.quickCard}
-              onPress={() => navigation.navigate(action.target)}
-            >
-              <View style={[styles.quickIcon, { backgroundColor: `${action.color}15` }]}>
-                <Ionicons name={action.icon as any} size={20} color={action.color} />
-              </View>
-              <Text style={styles.quickLabel}>{action.label}</Text>
-              <Text style={styles.quickHelper}>{action.helper}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Live oracle</Text>
-            <Text style={styles.helper}>1 USD ≈ {rate} NGN (refreshed locally)</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        stickyHeaderIndices={[0]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.badge}>{connected ? 'Connected' : 'Offline'}</Text>
+            <Text style={styles.title}>TundePay</Text>
+            <Text style={styles.subtitle} numberOfLines={2}>
+              NGN ↔ USDC bridge on XRPL testnet. {wallet ? 'Wallet ready.' : 'Create your wallet.'}
+            </Text>
           </View>
-          <TouchableOpacity onPress={refreshBalance}>
-            <Ionicons name="refresh" size={20} color={colors.primary} />
+          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Settings')}>
+            <Ionicons name="menu" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>XRPL wallet</Text>
-            <Text style={styles.infoValue}>{wallet ? 'Active' : 'Missing'}</Text>
+
+        <WalletCard
+          balance={numericBalance.toFixed(2)}
+          convertedAmount={converted}
+          rate={`1 USD ≈ ${rate} NGN`}
+          currencyLabel="XRP"
+          convertedLabel="NGN"
+        />
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick actions</Text>
+          <View style={styles.quickGrid}>
+            {quickActions.map((action) => (
+              <TouchableOpacity
+                key={action.label}
+                style={styles.quickCard}
+                onPress={() => navigation.navigate(action.target)}
+              >
+                <View style={[styles.quickIcon, { backgroundColor: `${action.color}15` }]}>
+                  <Ionicons name={action.icon as any} size={20} color={action.color} />
+                </View>
+                <Text style={styles.quickLabel}>{action.label}</Text>
+                <Text style={styles.quickHelper}>{action.helper}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Balance</Text>
-            <Text style={styles.infoValue}>{numericBalance.toFixed(2)} XRP</Text>
-          </View>
-          {wallet && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Address</Text>
-              <Text style={[styles.infoValue, styles.address]} numberOfLines={1}>
-                {wallet.address}
-              </Text>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Live oracle</Text>
+              <Text style={styles.helper}>1 USD ≈ {rate} NGN (refreshed locally)</Text>
             </View>
-          )}
-          {statusMessage && <Text style={styles.helper}>{statusMessage}</Text>}
+            <TouchableOpacity onPress={() => refreshBalance()}>
+              <Ionicons name="refresh" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>XRPL wallet</Text>
+              <Text style={styles.infoValue}>{wallet ? 'Active' : 'Missing'}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Balance</Text>
+              <Text style={styles.infoValue}>{numericBalance.toFixed(2)} XRP</Text>
+            </View>
+            {wallet && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Address</Text>
+                <Text style={[styles.infoValue, styles.address]} numberOfLines={1}>
+                  {wallet.address}
+                </Text>
+              </View>
+            )}
+            {statusMessage && <Text style={styles.helper}>{statusMessage}</Text>}
+          </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent activity</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('History')}>
-            <Text style={styles.link}>See all</Text>
-          </TouchableOpacity>
+        <View style={[styles.section, { paddingBottom: spacing.xl }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent activity</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('History')}>
+              <Text style={styles.link}>See all</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.listStack}>
+            {sampleTransactions.map((tx, index) => (
+              <TransactionListItem
+                key={`${tx.description}-${index}`}
+                type={tx.type as 'sent' | 'received'}
+                amount={tx.amount}
+                currency={tx.currency}
+                description={tx.description}
+                date={tx.date}
+              />
+            ))}
+          </View>
         </View>
-        <View style={styles.listStack}>
-          {sampleTransactions.map((tx, index) => (
-            <TransactionListItem
-              key={`${tx.description}-${index}`}
-              type={tx.type as 'sent' | 'received'}
-              amount={tx.amount}
-              currency={tx.currency}
-              description={tx.description}
-              date={tx.date}
-            />
-          ))}
-        </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -165,6 +176,9 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
+      paddingVertical: spacing.md,
+      backgroundColor: colors.background,
+      zIndex: 10,
     },
     badge: {
       ...typography.caption,

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, borderRadius, shadows } from '../theme';
 import { Button, Keypad } from '../components';
@@ -32,52 +32,58 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Pay</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Pay</Text>
+        </View>
 
-      <View style={styles.amountBox}>
-        <Text style={styles.helper}>Amount in NGN</Text>
-        <Text style={styles.amount}>
-          {amount || '0'} <Text style={styles.amountSuffix}>NGN</Text>
-        </Text>
-        <Text style={styles.converted}>≈ {amountUSDC} USDC</Text>
-      </View>
+        <View style={styles.amountBox}>
+          <Text style={styles.helper}>Amount in NGN</Text>
+          <Text style={styles.amount}>
+            {amount || '0'} <Text style={styles.amountSuffix}>NGN</Text>
+          </Text>
+          <Text style={styles.converted}>≈ {amountUSDC} USDC</Text>
+        </View>
 
-      <Keypad onNumberPress={onNumberPress} onDelete={onDelete} />
+        <Keypad onNumberPress={onNumberPress} onDelete={onDelete} />
 
-      <View style={styles.actions}>
-        <Button
-          title="Pay via NFC"
-          onPress={() => navigation.navigate('NFCPayment', { amount, amountUSDC })}
-          disabled={amountNGN === 0}
-          icon={<Ionicons name="phone-portrait-outline" size={20} color={colors.textWhite} />}
-        />
-        <Button
-          title="Pay via QR Scan"
-          variant="outline"
-          onPress={() => navigation.navigate('QRPayment', { amount, amountUSDC })}
-          disabled={amountNGN === 0}
-          icon={<Ionicons name="qr-code-outline" size={20} color={colors.primary} />}
-        />
-        <Button
-          title="Pay via SMS (offline)"
-          variant="secondary"
-          onPress={() => navigation.navigate('SMSPayment', { amount })}
-          disabled={amountNGN === 0}
-          icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.textWhite} />}
-        />
-      </View>
-    </ScrollView>
+        <View style={styles.actions}>
+          <Button
+            title="Pay via NFC"
+            onPress={() => navigation.navigate('NFCPayment', { amount, amountUSDC })}
+            disabled={amountNGN === 0}
+            icon={<Ionicons name="phone-portrait-outline" size={20} color={colors.textWhite} />}
+          />
+          <Button
+            title="Pay via QR Scan"
+            variant="outline"
+            onPress={() => navigation.navigate('QRPayment', { amount, amountUSDC })}
+            disabled={amountNGN === 0}
+            icon={<Ionicons name="qr-code-outline" size={20} color={colors.primary} />}
+          />
+          <Button
+            title="Pay via SMS (offline)"
+            variant="secondary"
+            onPress={() => navigation.navigate('SMSPayment', { amount })}
+            disabled={amountNGN === 0}
+            icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.textWhite} />}
+          />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,

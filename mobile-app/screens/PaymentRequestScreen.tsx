@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StackScreenProps } from '@react-navigation/stack';
 import { QRCodeDisplay } from '../components';
@@ -15,30 +15,36 @@ export const PaymentRequestScreen: React.FC<PaymentRequestScreenProps> = ({ navi
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Payment request</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Payment request</Text>
+        </View>
 
-      <View style={styles.card}>
-        <QRCodeDisplay value={qrValue} size={220} />
-        <View style={styles.meta}>
-          <Text style={styles.amount}>{amount || '0'} NGN</Text>
-          <Text style={styles.helper}>≈ {amountUSDC} USDC</Text>
-          <Text style={styles.address} numberOfLines={1}>
-            {address}
-          </Text>
+        <View style={styles.card}>
+          <QRCodeDisplay value={qrValue} size={220} />
+          <View style={styles.meta}>
+            <Text style={styles.amount}>{amount || '0'} NGN</Text>
+            <Text style={styles.helper}>≈ {amountUSDC} USDC</Text>
+            <Text style={styles.address} numberOfLines={1}>
+              {address}
+            </Text>
+          </View>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,

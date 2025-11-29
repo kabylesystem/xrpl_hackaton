@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, borderRadius, shadows } from '../theme';
 import { Button } from '../components';
@@ -22,46 +22,55 @@ export const SMSPaymentScreen: React.FC<SMSPaymentScreenProps> = ({ navigation, 
   const smsText = `PAY ${amount || '1200'}`;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.title}>SMS payment</Text>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.helper}>Offline flow</Text>
-        <Text style={styles.description}>
-          Send the SMS below to trigger a backend payment even without internet access.
-        </Text>
-
-        <View style={styles.smsBox}>
-          <Ionicons name="chatbubble-ellipses-outline" size={22} color={colors.primary} />
-          <Text style={styles.smsText}>{smsText}</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>SMS payment</Text>
         </View>
 
-        <View style={styles.steps}>
-          <Text style={styles.helper}>How it works</Text>
-          <Text style={styles.step}>1. Copy the SMS text and send to our gateway number.</Text>
-          <Text style={styles.step}>2. We convert NGN → USDC using the oracle.</Text>
-          <Text style={styles.step}>3. XRPL transaction is signed & broadcasted server-side.</Text>
-          <Text style={styles.step}>4. You receive a confirmation SMS.</Text>
-        </View>
-      </View>
+        <View style={styles.card}>
+          <Text style={styles.helper}>Offline flow</Text>
+          <Text style={styles.description}>
+            Send the SMS below to trigger a backend payment even without internet access.
+          </Text>
 
-      <Button title="Back to home" variant="outline" onPress={() => navigation.navigate('Home')} />
-    </View>
+          <View style={styles.smsBox}>
+            <Ionicons name="chatbubble-ellipses-outline" size={22} color={colors.primary} />
+            <Text style={styles.smsText}>{smsText}</Text>
+          </View>
+
+          <View style={styles.steps}>
+            <Text style={styles.helper}>How it works</Text>
+            <Text style={styles.step}>1. Copy the SMS text and send to our gateway number.</Text>
+            <Text style={styles.step}>2. We convert NGN → USDC using the oracle.</Text>
+            <Text style={styles.step}>3. XRPL transaction is signed & broadcasted server-side.</Text>
+            <Text style={styles.step}>4. You receive a confirmation SMS.</Text>
+          </View>
+        </View>
+
+        <Button title="Back to home" variant="outline" onPress={() => navigation.navigate('Home')} />
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,
-      padding: spacing.lg,
+      paddingHorizontal: spacing.lg,
+    },
+    content: {
       gap: spacing.lg,
+      paddingVertical: spacing.lg,
     },
     header: {
       flexDirection: 'row',

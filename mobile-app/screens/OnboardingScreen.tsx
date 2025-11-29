@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, SafeAreaView, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { typography, spacing, borderRadius, shadows } from '../theme';
@@ -72,53 +72,62 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.hero}>
-        <Text style={styles.badge}>XRPL Hackathon</Text>
-        <Text style={styles.title}>TundePay</Text>
-        <Text style={styles.subtitle}>NGN ↔ USDC bridge, ready for offline payments.</Text>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.iconCircle}>
-          <Ionicons name={slides[current].icon as any} size={28} color={colors.primary} />
-        </View>
-        <Text style={styles.slideTitle}>{slides[current].title}</Text>
-        <Text style={styles.slideSubtitle}>{slides[current].subtitle}</Text>
-
-        <View style={styles.progressDots}>
-          {slides.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.dot,
-                index === current && {
-                  backgroundColor: colors.primary,
-                  width: 24,
-                },
-              ]}
-            />
-          ))}
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.hero}>
+          <Text style={styles.badge}>XRPL Hackathon</Text>
+          <Text style={styles.title}>TundePay</Text>
+          <Text style={styles.subtitle}>NGN ↔ USDC bridge, ready for offline payments.</Text>
         </View>
 
-        <Button
-          title={current === slides.length - 1 ? 'Get started' : 'Next'}
-          onPress={handleNext}
-          style={styles.cta}
-        />
-        <TouchableOpacity onPress={markComplete} style={styles.skip}>
-          <Text style={styles.skipText}>Skip onboarding</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+        <View style={styles.card}>
+          <View style={styles.iconCircle}>
+            <Ionicons name={slides[current].icon as any} size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.slideTitle}>{slides[current].title}</Text>
+          <Text style={styles.slideSubtitle}>{slides[current].subtitle}</Text>
+
+          <View style={styles.progressDots}>
+            {slides.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.dot,
+                  index === current && {
+                    backgroundColor: colors.primary,
+                    width: 24,
+                  },
+                ]}
+              />
+            ))}
+          </View>
+
+          <Button
+            title={current === slides.length - 1 ? 'Get started' : 'Next'}
+            onPress={handleNext}
+            style={styles.cta}
+          />
+          <TouchableOpacity onPress={markComplete} style={styles.skip}>
+            <Text style={styles.skipText}>Skip onboarding</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    scrollContent: {
+      paddingBottom: spacing.lg,
     },
     centerContent: {
       justifyContent: 'center',

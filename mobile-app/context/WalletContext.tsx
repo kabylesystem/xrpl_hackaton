@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Client, Wallet } from 'xrpl';
 import {
   connectToXRPL,
@@ -18,11 +19,12 @@ interface WalletContextValue {
   loading: boolean;
   connect: () => Promise<void>;
   setupWallet: () => Promise<void>;
-  refreshBalance: () => Promise<void>;
+  refreshBalance: (targetWallet?: Wallet) => Promise<void>;
   submitPayment: (destination: string, amount: string) => Promise<string>;
 }
 
 const WalletContext = createContext<WalletContextValue | undefined>(undefined);
+const WALLET_STORAGE_KEY = '@xrpl_wallet_data';
 
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
   const [client, setClient] = useState<Client | null>(null);
@@ -42,6 +44,27 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
   }, [client]);
+
+  useEffect(() => {
+    // Attempt to restore a previously saved wallet on mount
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem(WALLET_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved) as { seed: string };
+          if (parsed?.seed) {
+            const restoredWallet = Wallet.fromSeed(parsed.seed);
+            setWallet(restoredWallet);
+            setStatusMessage('Restored wallet from device storage');
+            await connect();
+            await refreshBalance(restoredWallet);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to restore wallet', error);
+      }
+    })();
+  }, []);
 
   const connect = async () => {
     if (loading || connected) return;
@@ -72,6 +95,10 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
 
       const created = await createXRPLWallet(client as Client);
       setWallet(created);
+      await AsyncStorage.setItem(
+        WALLET_STORAGE_KEY,
+        JSON.stringify({ seed: created.seed })
+      );
       setStatusMessage('Wallet ready and funded');
 
       // Give faucet a moment to settle before reading balance
@@ -87,11 +114,12 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const refreshBalance = async () => {
-    if (!client || !wallet) return;
+  const refreshBalance = async (targetWallet?: Wallet) => {
+    const selectedWallet = targetWallet ?? wallet;
+    if (!client || !selectedWallet) return;
 
     try {
-      const bal = await getBalance(client, wallet.address);
+      const bal = await getBalance(client, selectedWallet.address);
       setBalance(bal);
       setStatusMessage(`Balance updated • ${new Date().toLocaleTimeString()}`);
     } catch (error) {

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, NFCAnimation } from '../components';
 import { typography, spacing, borderRadius, shadows } from '../theme';
@@ -87,25 +87,33 @@ export const NFCPaymentScreen: React.FC<NFCPaymentScreenProps> = ({ navigation, 
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.screenTitle}>NFC payment</Text>
-      </View>
-      {content()}
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.scrollContent} style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.screenTitle}>NFC payment</Text>
+        </View>
+        {content()}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,
       padding: spacing.lg,
-      gap: spacing.lg,
+    },
+    scrollContent: {
+      paddingBottom: spacing.xl,
     },
     header: {
       flexDirection: 'row',

@@ -8,6 +8,7 @@ import {
   ScrollView,
   Switch,
   Alert,
+  SafeAreaView,
 } from "react-native";
 import { useSettings } from "../context/SettingsContext";
 import { typography, spacing, borderRadius, shadows } from "../theme";
@@ -54,110 +55,123 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.card}>
-          <View style={styles.toggleContainer}>
-            <View style={styles.toggleLabelContainer}>
-              <Text style={styles.toggleLabel}>Dark mode</Text>
-              <Text style={styles.toggleDescription}>
-                Toggle a darker palette for low-light environments
-              </Text>
-            </View>
-            <Switch
-              value={darkMode}
-              onValueChange={toggleTheme}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={darkMode ? colors.textWhite : "#f4f3f4"}
-            />
-          </View>
-        </View>
-
-        <Text style={styles.title}>Progress Bar Settings</Text>
-        <Text style={styles.subtitle}>
-          Configure how your balance progress is displayed
-        </Text>
-
-        {/* Mode Toggle */}
-        <View style={styles.card}>
-          <View style={styles.toggleContainer}>
-            <View style={styles.toggleLabelContainer}>
-              <Text style={styles.toggleLabel}>Auto Scale Mode</Text>
-              <Text style={styles.toggleDescription}>
-                Automatically adjust max balance based on your current balance
-              </Text>
-            </View>
-            <Switch
-              value={isAutoMode}
-              onValueChange={handleToggleMode}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={isAutoMode ? colors.textWhite : "#f4f3f4"}
-            />
-          </View>
-        </View>
-
-        {/* Auto Mode Info */}
-        {isAutoMode ? null : (
-          /* Manual Mode Input */
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.content}>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Custom Maximum Balance</Text>
-            <Text style={styles.cardDescription}>
-              Set your own goal for the progress bar
-            </Text>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                value={manualMax}
-                onChangeText={setManualMax}
-                keyboardType="decimal-pad"
-                placeholder="Enter max balance"
-                placeholderTextColor="#999"
+            <View style={styles.toggleContainer}>
+              <View style={styles.toggleLabelContainer}>
+                <Text style={styles.toggleLabel}>Dark mode</Text>
+                <Text style={styles.toggleDescription}>
+                  Toggle a darker palette for low-light environments
+                </Text>
+              </View>
+              <Switch
+                value={darkMode}
+                onValueChange={toggleTheme}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={darkMode ? colors.textWhite : "#f4f3f4"}
               />
-              <Text style={styles.inputSuffix}>XRP</Text>
             </View>
-            <Text style={styles.inputHint}>
-              Current setting: {settings.manualMaxBalance} XRP
+          </View>
+
+          <Text style={styles.title}>Progress Bar Settings</Text>
+          <Text style={styles.subtitle}>
+            Configure how your balance progress is displayed
+          </Text>
+
+          {/* Mode Toggle */}
+          <View style={styles.card}>
+            <View style={styles.toggleContainer}>
+              <View style={styles.toggleLabelContainer}>
+                <Text style={styles.toggleLabel}>Auto Scale Mode</Text>
+                <Text style={styles.toggleDescription}>
+                  Automatically adjust max balance based on your current balance
+                </Text>
+              </View>
+              <Switch
+                value={isAutoMode}
+                onValueChange={handleToggleMode}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={isAutoMode ? colors.textWhite : "#f4f3f4"}
+              />
+            </View>
+          </View>
+
+          {/* Auto Mode Info */}
+          {isAutoMode ? null : (
+            /* Manual Mode Input */
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Custom Maximum Balance</Text>
+              <Text style={styles.cardDescription}>
+                Set your own goal for the progress bar
+              </Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  value={manualMax}
+                  onChangeText={setManualMax}
+                  keyboardType="decimal-pad"
+                  placeholder="Enter max balance"
+                  placeholderTextColor="#999"
+                />
+                <Text style={styles.inputSuffix}>XRP</Text>
+              </View>
+              <Text style={styles.inputHint}>
+                Current setting: {settings.manualMaxBalance} XRP
+              </Text>
+            </View>
+          )}
+
+          {/* Example */}
+          <View style={styles.exampleCard}>
+            <Text style={styles.exampleTitle}>📊 How it works</Text>
+            <Text style={styles.exampleText}>
+              {isAutoMode
+                ? "The progress bar will dynamically adjust its maximum value as your balance grows, keeping the visualization meaningful."
+                : `The progress bar will always show your balance as a percentage of ${
+                    manualMax || settings.manualMaxBalance
+                  } XRP, giving you a fixed goal to track.`}
             </Text>
           </View>
-        )}
 
-        {/* Example */}
-        <View style={styles.exampleCard}>
-          <Text style={styles.exampleTitle}>📊 How it works</Text>
-          <Text style={styles.exampleText}>
-            {isAutoMode
-              ? "The progress bar will dynamically adjust its maximum value as your balance grows, keeping the visualization meaningful."
-              : `The progress bar will always show your balance as a percentage of ${
-                  manualMax || settings.manualMaxBalance
-                } XRP, giving you a fixed goal to track.`}
-          </Text>
+          {/* Save Button */}
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+            <Text style={styles.saveButtonText}>Save Settings</Text>
+          </TouchableOpacity>
+
+          {/* Cancel Button */}
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Save Button */}
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Save Settings</Text>
-        </TouchableOpacity>
-
-        {/* Cancel Button */}
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
   StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
+    scrollContent: {
+      paddingTop: spacing.xl,
+      paddingBottom: spacing.xl,
+      alignItems: "center",
+    },
     content: {
-      padding: spacing.lg,
+      paddingHorizontal: spacing.lg,
+      width: "100%",
+      maxWidth: 520,
     },
     title: {
       ...typography.h2,
