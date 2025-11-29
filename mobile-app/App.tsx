@@ -17,6 +17,7 @@ import { HistoryScreen } from "./screens/HistoryScreen";
 import { SMSPaymentScreen } from "./screens/SMSPaymentScreen";
 import { NFCPaymentScreen } from "./screens/NFCPaymentScreen";
 import { QRPaymentScreen } from "./screens/QRPaymentScreen";
+import { PaymentSuccessScreen } from "./screens/PaymentSuccessScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 
 const Stack = createStackNavigator<any>();
@@ -43,6 +44,7 @@ const AppNavigator = () => {
           <Stack.Screen name="SMSPayment" component={SMSPaymentScreen} />
           <Stack.Screen name="NFCPayment" component={NFCPaymentScreen} />
           <Stack.Screen name="QRPayment" component={QRPaymentScreen} />
+          <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
         </Stack.Navigator>
       </NavigationContainer>

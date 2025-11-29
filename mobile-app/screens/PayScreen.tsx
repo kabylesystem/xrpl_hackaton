@@ -17,7 +17,7 @@ interface PaymentQRData {
   tokenAddress: string;
 }
 
-const SMS_GATEWAY_NUMBER = "+1888888888";
+const SMS_GATEWAY_NUMBER = "+1 510 853-8927";
 
 export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
   const { submitPayment, getSignedPayment, loading: walletLoading } = useWallet();
@@ -32,20 +32,30 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
     // using valid testnet address for testing flow if needed, but keeping structure
     setScannedData({
       walletAddress: "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe", // Example destination
-      amountOfToken: "10",
-      tokenSymbol: "USDC",
-      tokenAddress: "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe", // Example issuer
+      amountOfToken: "0.1",
+      tokenSymbol: "XRP",
+      tokenAddress: "", // Example issuer
     });
   };
+
+  const isNativeXRP = useMemo(() => {
+    if (!scannedData) return false;
+    const { tokenSymbol, tokenAddress } = scannedData;
+    return tokenSymbol === "XRPL" || tokenSymbol === "XRP" || !tokenSymbol || !tokenAddress;
+  }, [scannedData]);
 
   const handlePayInternet = async () => {
     if (!scannedData) return;
 
     setProcessing(true);
     try {
-      // Note: submitPayment now supports currency and issuer
-      const hash = await submitPayment(scannedData.walletAddress, scannedData.amountOfToken, scannedData.tokenSymbol, scannedData.tokenAddress);
-      Alert.alert("Success", `Payment Sent! Hash: ${hash}`, [{ text: "OK", onPress: () => navigation.goBack() }]);
+      const currency = isNativeXRP ? "XRP" : scannedData.tokenSymbol;
+      const issuer = isNativeXRP ? undefined : scannedData.tokenAddress;
+
+      const hash = await submitPayment(scannedData.walletAddress, scannedData.amountOfToken, currency, issuer);
+
+      navigation.navigate("PaymentSuccess", { hash });
+      setScannedData(null); // Reset scan data after successful navigation
     } catch (error: any) {
       Alert.alert("Error", error.message || "Payment failed");
     } finally {
@@ -58,19 +68,26 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
 
     setProcessing(true);
     try {
-      const signedBlob = await getSignedPayment(
-        scannedData.walletAddress,
-        scannedData.amountOfToken,
-        scannedData.tokenSymbol,
-        scannedData.tokenAddress
-      );
+      const currency = isNativeXRP ? "XRP" : scannedData.tokenSymbol;
+      const issuer = isNativeXRP ? undefined : scannedData.tokenAddress;
+
+      const signedBlob = await getSignedPayment(scannedData.walletAddress, scannedData.amountOfToken, currency, issuer);
 
       const smsUrl = `sms:${SMS_GATEWAY_NUMBER}${Platform.OS === "ios" ? "&" : "?"}body=${encodeURIComponent(signedBlob)}`;
 
       const canOpen = await Linking.canOpenURL(smsUrl);
       if (canOpen) {
         await Linking.openURL(smsUrl);
-        Alert.alert("SMS Opened", "Please send the SMS to complete the transaction.", [{ text: "Done", onPress: () => navigation.goBack() }]);
+        // We can't track SMS success easily, so we just reset and go back
+        Alert.alert("SMS Opened", "Please send the SMS to complete the transaction.", [
+          {
+            text: "Done",
+            onPress: () => {
+              setScannedData(null);
+              navigation.goBack();
+            },
+          },
+        ]);
       } else {
         Alert.alert("Error", "Cannot open SMS app");
       }
@@ -113,10 +130,10 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
 
               <Text style={styles.label}>Amount:</Text>
               <Text style={styles.amount}>
-                {scannedData.amountOfToken} <Text style={styles.symbol}>{scannedData.tokenSymbol}</Text>
+                {scannedData.amountOfToken} <Text style={styles.symbol}>{isNativeXRP ? "XRP" : scannedData.tokenSymbol}</Text>
               </Text>
 
-              {scannedData.tokenSymbol !== "XRP" && <Text style={styles.issuer}>Issuer: {scannedData.tokenAddress}</Text>}
+              {!isNativeXRP && <Text style={styles.issuer}>Issuer: {scannedData.tokenAddress}</Text>}
             </View>
 
             <View style={styles.actions}>
