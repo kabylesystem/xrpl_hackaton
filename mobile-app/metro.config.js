@@ -9,7 +9,8 @@ config.resolver.extraNodeModules = {
   events: require.resolve('events'),
   process: require.resolve('process'),
   util: require.resolve('util'),
+  // Silence @noble/hashes subpath warning by aliasing to exported entry
+  '@noble/hashes/crypto.js': require.resolve('@noble/hashes/crypto'),
 };
 
 module.exports = config;
-

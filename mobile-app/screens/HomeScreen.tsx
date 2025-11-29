@@ -56,6 +56,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <TouchableOpacity
+        style={styles.burgerFloating}
+        onPress={() => navigation.navigate('Settings')}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="menu" size={22} color={colors.textPrimary} />
+      </TouchableOpacity>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -70,9 +77,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               NGN ↔ USDC bridge on XRPL testnet. {wallet ? 'Wallet ready.' : 'Create your wallet.'}
             </Text>
           </View>
-          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Settings')}>
-            <Ionicons name="menu" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
         </View>
 
         <WalletCard
@@ -179,6 +183,20 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       paddingVertical: spacing.md,
       backgroundColor: colors.background,
       zIndex: 10,
+      paddingRight: 64,
+    },
+    burgerFloating: {
+      position: 'absolute',
+      top: spacing.lg,
+      right: spacing.lg,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...shadows.sm,
+      zIndex: 20,
     },
     badge: {
       ...typography.caption,
