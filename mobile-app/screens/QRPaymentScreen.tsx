@@ -89,7 +89,7 @@ export const QRPaymentScreen: React.FC<QRPaymentScreenProps> = ({ navigation, ro
           </View>
           <Text style={styles.helper}>Point the camera at a merchant QR. We will read the destination address and amount.</Text>
 
-          {scanned ? (
+          {scanned && (
             <View style={styles.meta}>
               <Text style={styles.amount}>{amount || "0"} NGN</Text>
               <Text style={styles.helper}>≈ {amountUSDC} USDC</Text>
@@ -98,8 +98,6 @@ export const QRPaymentScreen: React.FC<QRPaymentScreenProps> = ({ navigation, ro
               </Text>
               <Button title="Confirm payment" onPress={() => navigation.navigate("Home")} />
             </View>
-          ) : (
-            <Button title="Simulate scan" onPress={() => setScanned(true)} />
           )}
         </View>
       </ScrollView>
