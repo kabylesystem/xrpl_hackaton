@@ -4,23 +4,38 @@ import { Ionicons } from "@expo/vector-icons";
 import { Wallet } from "xrpl";
 
 import { useWallet } from "../context/WalletContext";
+import { encrypt } from "../utils/encryption";
 
 interface SendPaymentScreenProps {
   navigation: any;
 }
 
-type Step = "amount" | "confirm";
+type Step = "amount" | "security" | "confirm";
 
 export default function SendPaymentScreen({ navigation }: SendPaymentScreenProps) {
   const { getSignedPayment } = useWallet();
   const [step, setStep] = useState<Step>("amount");
   const [amount, setAmount] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [hint, setHint] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
-  const handleNextToConfirm = () => {
+  const handleNextToSecurity = () => {
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       Alert.alert("Error", "Please enter a valid amount");
+      return;
+    }
+    setStep("security");
+  };
+
+  const handleNextToConfirm = () => {
+    if (!password || password.length < 4) {
+      Alert.alert("Error", "Password must be at least 4 characters");
+      return;
+    }
+    if (!hint) {
+      Alert.alert("Error", "Please provide a hint for the recipient");
       return;
     }
     setStep("confirm");
@@ -32,11 +47,14 @@ export default function SendPaymentScreen({ navigation }: SendPaymentScreenProps
       // 1. Generate a temporary wallet for the contact
       const tempWallet = Wallet.generate();
 
-      // 2. Generate the signed tx to send the money but not submiting it yet
+      // 2. Encrypt the private key (seed) with the user's password
+      const encryptedSeed = encrypt(tempWallet.seed!, password);
+
+      // 3. Generate the signed tx to send the money but not submiting it yet
       // We are sending TO the temp wallet address
       const signedTxBlob = await getSignedPayment(tempWallet.address, amount);
 
-      // 3. Send the private key along with the signed tx to the contact
+      // 4. Send the encrypted key along with the signed tx to the contact
       const message = `Here is ${amount} XRP.
       
 To claim it:
@@ -44,8 +62,10 @@ To claim it:
 2. Go to "Receive" > "Claim SMS Payment"
 3. Enter these details:
 
-Private Key:
-${tempWallet.seed}
+Encrypted Key:
+${encryptedSeed}
+
+Hint: ${hint}
 
 Transaction Data:
 ${signedTxBlob}`;
@@ -79,6 +99,27 @@ ${signedTxBlob}`;
         <TextInput style={styles.input} placeholder="10.00" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" autoFocus />
       </View>
 
+      <TouchableOpacity style={styles.primaryButton} onPress={handleNextToSecurity}>
+        <Text style={styles.primaryButtonText}>Next</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderSecurityStep = () => (
+    <View style={styles.stepContainer}>
+      <Text style={styles.title}>Secure Payment</Text>
+      <Text style={styles.subtitle}>Set a password to encrypt the private key. Share the hint so the recipient can guess it.</Text>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Password</Text>
+        <TextInput style={styles.input} placeholder="Secret Password" value={password} onChangeText={setPassword} secureTextEntry autoFocus />
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Hint for Recipient</Text>
+        <TextInput style={styles.input} placeholder="e.g. Your first pet's name" value={hint} onChangeText={setHint} />
+      </View>
+
       <TouchableOpacity style={styles.primaryButton} onPress={handleNextToConfirm}>
         <Text style={styles.primaryButtonText}>Review</Text>
       </TouchableOpacity>
@@ -95,10 +136,15 @@ ${signedTxBlob}`;
 
         <View style={styles.divider} />
 
+        <Text style={styles.confirmLabel}>Security:</Text>
+        <Text style={styles.confirmValue}>Password Protected</Text>
+        <Text style={styles.confirmSubValue}>Hint: "{hint}"</Text>
+
+        <View style={styles.divider} />
+
         <Text style={styles.confirmLabel}>Note:</Text>
         <Text style={styles.messagePreview}>
-          This will generate a temporary wallet and a signed transaction. Share the generated key and data with the recipient to let them claim the
-          funds.
+          This will generate a temporary wallet with an encrypted key. The recipient will need the password to claim the funds.
         </Text>
       </View>
 
@@ -117,7 +163,8 @@ ${signedTxBlob}`;
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            if (step === "confirm") setStep("amount");
+            if (step === "confirm") setStep("security");
+            else if (step === "security") setStep("amount");
             else navigation.goBack();
           }}
         >
@@ -126,6 +173,7 @@ ${signedTxBlob}`;
       </View>
 
       {step === "amount" && renderAmountStep()}
+      {step === "security" && renderSecurityStep()}
       {step === "confirm" && renderConfirmStep()}
     </KeyboardAvoidingView>
   );
@@ -148,8 +196,15 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     color: "#23292E",
-    marginBottom: 30,
+    marginBottom: 10,
     textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 30,
+    paddingHorizontal: 20,
   },
   inputContainer: {
     marginBottom: 20,
@@ -164,7 +219,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 16,
     borderRadius: 12,
-    fontSize: 24,
+    fontSize: 18,
     borderWidth: 1,
     borderColor: "#ddd",
     textAlign: "center",
@@ -198,6 +253,16 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#27ae60",
     marginBottom: 10,
+  },
+  confirmValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#23292E",
+  },
+  confirmSubValue: {
+    fontSize: 16,
+    color: "#666",
+    fontStyle: "italic",
   },
   divider: {
     height: 1,

@@ -10,6 +10,7 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as SMS from "expo-sms";
@@ -17,6 +18,7 @@ import { Wallet, AccountDelete } from "xrpl";
 
 import { useWallet } from "../context/WalletContext";
 import { prepareAccountDelete, signTransaction } from "../utils/xrpl";
+import { decrypt } from "../utils/encryption";
 
 interface ClaimPaymentScreenProps {
   navigation: any;
@@ -28,27 +30,33 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
   const { client, wallet } = useWallet();
   const [loading, setLoading] = useState(false);
   const [manualInput, setManualInput] = useState("");
-  const [parsedData, setParsedData] = useState<{ seed: string; signedTx: string; amount?: string } | null>(null);
+  const [parsedData, setParsedData] = useState<{ encryptedSeed: string; signedTx: string; amount?: string; hint?: string } | null>(null);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [password, setPassword] = useState("");
 
   const handleParseSMS = (text: string) => {
     try {
       // Expected format from SendPaymentScreen:
       // ...
-      // Private Key:
-      // {seed}
+      // Encrypted Key:
+      // {encryptedSeed}
+      //
+      // Hint: {hint}
       //
       // Transaction Data:
       // {blob}
 
-      const seedMatch = text.match(/Private Key:\s*([s][a-zA-Z0-9]+)/);
+      const seedMatch = text.match(/Encrypted Key:\s*([A-Za-z0-9+/=]+)/); // Base64
       const txMatch = text.match(/Transaction Data:\s*([A-Fa-f0-9]+)/);
       const amountMatch = text.match(/Here is ([0-9.]+) XRP/);
+      const hintMatch = text.match(/Hint:\s*(.+)/);
 
       if (seedMatch && txMatch) {
         const data = {
-          seed: seedMatch[1].trim(),
+          encryptedSeed: seedMatch[1].trim(),
           signedTx: txMatch[1].trim(),
           amount: amountMatch ? amountMatch[1] : undefined,
+          hint: hintMatch ? hintMatch[1].trim() : undefined,
         };
         setParsedData(data);
         return true;
@@ -61,18 +69,44 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
     }
   };
 
-  const handleProcessClaim = async () => {
+  const initiateClaim = () => {
+    if (!parsedData) return;
+    setPassword("");
+    setPasswordModalVisible(true);
+  };
+
+  const handleDecryptAndClaim = async () => {
     if (!parsedData || !wallet || !client) {
       Alert.alert("Error", "Please connect your wallet first");
       return;
     }
 
+    if (!password) {
+      Alert.alert("Error", "Please enter the password");
+      return;
+    }
+
     setLoading(true);
     try {
-      // 1. Reconstruct temp wallet from seed
-      const tempWallet = Wallet.fromSeed(parsedData.seed);
+      // 1. Decrypt the seed
+      let decryptedSeed = "";
+      try {
+        decryptedSeed = decrypt(parsedData.encryptedSeed, password);
+        if (!decryptedSeed || !decryptedSeed.startsWith("s")) {
+          throw new Error("Invalid password or corrupted key");
+        }
+      } catch (e) {
+        setLoading(false);
+        Alert.alert("Error", "Incorrect password. Please try again.");
+        return;
+      }
 
-      // 2. Prepare AccountDelete transaction from temp wallet to user wallet
+      setPasswordModalVisible(false);
+
+      // 2. Reconstruct temp wallet from seed
+      const tempWallet = Wallet.fromSeed(decryptedSeed);
+
+      // 3. Prepare AccountDelete transaction from temp wallet to user wallet
       let signedDeleteTx;
       try {
         const preparedDelete = await prepareAccountDelete(client, tempWallet, wallet.address);
@@ -97,7 +131,7 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
         signedDeleteTx = signed.tx_blob;
       }
 
-      // 3. Send SMS to gateway
+      // 4. Send SMS to gateway
       const gatewayMessage = `${parsedData.signedTx}|${signedDeleteTx}`;
 
       const isAvailable = await SMS.isAvailableAsync();
@@ -118,9 +152,9 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
 
   const onPasteCheck = () => {
     if (handleParseSMS(manualInput)) {
-      Alert.alert("Success", "Valid payment data found! You can now claim it.");
+      Alert.alert("Success", "Valid secured payment found! Proceed to claim.");
     } else {
-      Alert.alert("Error", "Could not find valid payment data in text. Please copy the full SMS content.");
+      Alert.alert("Error", "Could not find valid payment data. Please copy the full SMS content.");
     }
   };
 
@@ -152,9 +186,10 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
 
         {parsedData ? (
           <View style={styles.successCard}>
-            <Ionicons name="checkmark-circle" size={40} color="#27ae60" />
-            <Text style={styles.successText}>Payment Found</Text>
+            <Ionicons name="lock-closed" size={40} color="#27ae60" />
+            <Text style={styles.successText}>Secured Payment Found</Text>
             <Text style={styles.subText}>{parsedData.amount ? `${parsedData.amount} XRP` : "Valid Transaction Data"}</Text>
+            {parsedData.hint && <Text style={styles.hintText}>Hint: {parsedData.hint}</Text>}
           </View>
         ) : (
           <TouchableOpacity style={styles.pasteButton} onPress={onPasteCheck}>
@@ -164,14 +199,35 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
       </ScrollView>
 
       <View style={styles.footer}>
-        {loading ? (
-          <ActivityIndicator size="large" color="#27ae60" />
-        ) : (
-          <TouchableOpacity style={[styles.claimButton, !parsedData && styles.disabledButton]} onPress={handleProcessClaim} disabled={!parsedData}>
-            <Text style={styles.claimButtonText}>Send Claim SMS</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity style={[styles.claimButton, !parsedData && styles.disabledButton]} onPress={initiateClaim} disabled={!parsedData}>
+          <Text style={styles.claimButtonText}>Unlock & Claim</Text>
+        </TouchableOpacity>
       </View>
+
+      <Modal visible={passwordModalVisible} transparent={true} animationType="fade" onRequestClose={() => setPasswordModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Enter Password</Text>
+            <Text style={styles.modalSubtitle}>This payment is encrypted.</Text>
+            {parsedData?.hint && <Text style={styles.modalHint}>Hint: {parsedData.hint}</Text>}
+
+            <TextInput style={styles.modalInput} placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} autoFocus />
+
+            {loading ? (
+              <ActivityIndicator size="large" color="#27ae60" style={{ marginVertical: 20 }} />
+            ) : (
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={styles.modalButtonCancel} onPress={() => setPasswordModalVisible(false)}>
+                  <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalButtonConfirm} onPress={handleDecryptAndClaim}>
+                  <Text style={styles.modalButtonTextConfirm}>Claim</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -247,6 +303,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: "500",
   },
+  hintText: {
+    marginTop: 10,
+    color: "#555",
+    fontStyle: "italic",
+    textAlign: "center",
+  },
   footer: {
     padding: 20,
     backgroundColor: "#fff",
@@ -266,5 +328,74 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    width: "100%",
+    maxWidth: 340,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#23292E",
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    color: "#666",
+    marginBottom: 8,
+  },
+  modalHint: {
+    color: "#27ae60",
+    fontStyle: "italic",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  modalInput: {
+    width: "100%",
+    backgroundColor: "#f5f5f5",
+    padding: 16,
+    borderRadius: 12,
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  modalButtonCancel: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#eee",
+    alignItems: "center",
+  },
+  modalButtonConfirm: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#27ae60",
+    alignItems: "center",
+  },
+  modalButtonTextCancel: {
+    color: "#666",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  modalButtonTextConfirm: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
   },
 });
