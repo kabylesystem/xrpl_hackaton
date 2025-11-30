@@ -65,17 +65,6 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleSimulateScan = () => {
-    // Mock data based on mobile-app/utils/exampleQrCodeData.json
-    // using valid testnet address for testing flow if needed, but keeping structure
-    setScannedData({
-      walletAddress: "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe", // Example destination
-      amountOfToken: "0.1",
-      tokenSymbol: "XRP",
-      tokenAddress: "", // Example issuer
-    });
-  };
-
   const isNativeXRP = useMemo(() => {
     if (!scannedData) return false;
     const { tokenSymbol, tokenAddress } = scannedData;
@@ -169,7 +158,6 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
               )}
             </View>
             <Text style={styles.helper}>Point camera at a QR code to pay.</Text>
-            <Button title="Simulate Scan" onPress={handleSimulateScan} style={styles.simulateButton} />
           </View>
         ) : (
           <View style={styles.resultContainer}>
@@ -267,9 +255,6 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       color: colors.textSecondary,
       textAlign: "center",
       maxWidth: 280,
-    },
-    simulateButton: {
-      marginTop: spacing.lg,
     },
     resultContainer: {
       gap: spacing.xl,
