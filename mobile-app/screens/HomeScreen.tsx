@@ -64,11 +64,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       target: "SendPayment",
     },
     {
-      label: "History",
-      helper: "Transactions",
-      icon: "time",
+      label: "Claim",
+      helper: "From SMS",
+      icon: "gift",
       color: colors.primary,
-      target: "History",
+      target: "ClaimPayment",
     },
   ];
 
