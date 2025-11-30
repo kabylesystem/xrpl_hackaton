@@ -1,21 +1,21 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { StackScreenProps } from '@react-navigation/stack';
-import { QRCodeDisplay } from '../components';
-import { typography, spacing, borderRadius, shadows } from '../theme';
-import { useThemedColors } from '../context/ThemeContext';
+import React, { useMemo } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { StackScreenProps } from "@react-navigation/stack";
+import { QRCodeDisplay } from "../components";
+import { typography, spacing, borderRadius, shadows } from "../theme";
+import { useThemedColors } from "../context/ThemeContext";
 
-type PaymentRequestScreenProps = StackScreenProps<any, 'PaymentRequest'>;
+type PaymentRequestScreenProps = StackScreenProps<any, "PaymentRequest">;
 
 export const PaymentRequestScreen: React.FC<PaymentRequestScreenProps> = ({ navigation, route }) => {
-  const { amount = '0', amountToken = '0.00', tokenSymbol = 'XRP', address = 'wallet-not-set' } = route.params || {};
-  
+  const { amount = "0", amountToken = "0.00", tokenSymbol = "XRP", address = "wallet-not-set" } = route.params || {};
+
   const qrData = {
     walletAddress: address,
     amountOfToken: amountToken,
     tokenSymbol: tokenSymbol,
-    tokenAddress: '', 
+    tokenAddress: "",
   };
   const qrValue = JSON.stringify(qrData);
 
@@ -35,8 +35,10 @@ export const PaymentRequestScreen: React.FC<PaymentRequestScreenProps> = ({ navi
         <View style={styles.card}>
           <QRCodeDisplay value={qrValue} size={220} />
           <View style={styles.meta}>
-            <Text style={styles.amount}>{amount || '0'} NGN</Text>
-            <Text style={styles.helper}>≈ {amountToken} {tokenSymbol}</Text>
+            <Text style={styles.amount}>{amount || "0"} NGN</Text>
+            <Text style={styles.helper}>
+              ≈ {amountToken} {tokenSymbol}
+            </Text>
             <Text style={styles.address} numberOfLines={1}>
               {address}
             </Text>
@@ -60,8 +62,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       gap: spacing.lg,
     },
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.md,
     },
     iconButton: {
@@ -69,8 +71,8 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       height: 42,
       borderRadius: 21,
       backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       ...shadows.sm,
     },
     title: {
@@ -81,14 +83,14 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
       flex: 1,
       backgroundColor: colors.surface,
       borderRadius: borderRadius.xxl,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       padding: spacing.lg,
       ...shadows.md,
     },
     meta: {
       marginTop: spacing.lg,
-      alignItems: 'center',
+      alignItems: "center",
       gap: spacing.xs,
     },
     amount: {

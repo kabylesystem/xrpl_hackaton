@@ -1,6 +1,6 @@
-import { Client, Wallet, xrpToDrops, dropsToXrp, Payment } from 'xrpl';
+import { Client, Wallet, xrpToDrops, dropsToXrp, Payment, AccountDelete } from "xrpl";
 
-const TESTNET_URL = 'wss://s.altnet.rippletest.net:51233';
+const TESTNET_URL = "wss://s.altnet.rippletest.net:51233";
 
 export const connectToXRPL = async (): Promise<Client> => {
   const client = new Client(TESTNET_URL);
@@ -15,7 +15,7 @@ export const createWallet = async (client: Client): Promise<Wallet> => {
   try {
     await client.fundWallet(wallet);
   } catch (error) {
-    console.error('Error funding wallet:', error);
+    console.error("Error funding wallet:", error);
   }
 
   return wallet;
@@ -24,14 +24,14 @@ export const createWallet = async (client: Client): Promise<Wallet> => {
 export const getBalance = async (client: Client, address: string): Promise<string> => {
   try {
     const response = await client.request({
-      command: 'account_info',
+      command: "account_info",
       account: address,
-      ledger_index: 'validated',
+      ledger_index: "validated",
     });
     return String(dropsToXrp(response.result.account_data.Balance));
   } catch (error) {
-    console.error('Error getting balance:', error);
-    return '0';
+    console.error("Error getting balance:", error);
+    return "0";
   }
 };
 
@@ -40,23 +40,23 @@ export const sendPayment = async (
   wallet: Wallet,
   destination: string,
   amount: string,
-  currency: string = 'XRP',
+  currency: string = "XRP",
   issuer?: string
 ): Promise<any> => {
   let paymentAmount: any;
 
-  if (currency === 'XRP') {
+  if (currency === "XRP") {
     paymentAmount = xrpToDrops(amount);
   } else {
     paymentAmount = {
       currency,
       value: amount,
-      issuer
+      issuer,
     };
   }
 
   const payment: Payment = {
-    TransactionType: 'Payment',
+    TransactionType: "Payment",
     Account: wallet.address,
     Destination: destination,
     Amount: paymentAmount,
@@ -68,7 +68,7 @@ export const sendPayment = async (
     const result = await client.submitAndWait(signed.tx_blob);
     return result;
   } catch (error) {
-    console.error('Error sending payment:', error);
+    console.error("Error sending payment:", error);
     throw error;
   }
 };
@@ -78,29 +78,99 @@ export const preparePayment = async (
   wallet: Wallet,
   destination: string,
   amount: string,
-  currency: string = 'XRP',
+  currency: string = "XRP",
   issuer?: string
 ): Promise<Payment> => {
   let paymentAmount: any;
 
-  if (currency === 'XRP') {
+  if (currency === "XRP") {
     paymentAmount = xrpToDrops(amount);
   } else {
     paymentAmount = {
       currency,
       value: amount,
-      issuer
+      issuer,
+    };
+  }
+
+  const ledgerIndex = await client.getLedgerIndex();
+
+  const payment: Payment = {
+    TransactionType: "Payment",
+    Account: wallet.address,
+    Destination: destination,
+    Amount: paymentAmount,
+    LastLedgerSequence: ledgerIndex + 20000, // Allow 20000 ledgers (~22h) buffer for SMS delays
+  };
+
+  return await client.autofill(payment);
+};
+
+export const preparePaymentOffline = (
+  wallet: Wallet,
+  destination: string,
+  amount: string,
+  sequence: number,
+  ledgerIndex: number,
+  fee: string,
+  currency: string = "XRP",
+  issuer?: string
+): Payment => {
+  let paymentAmount: any;
+
+  if (currency === "XRP") {
+    paymentAmount = xrpToDrops(amount);
+  } else {
+    paymentAmount = {
+      currency,
+      value: amount,
+      issuer,
     };
   }
 
   const payment: Payment = {
-    TransactionType: 'Payment',
+    TransactionType: "Payment",
     Account: wallet.address,
     Destination: destination,
     Amount: paymentAmount,
+    Sequence: sequence,
+    LastLedgerSequence: ledgerIndex + 20000, // Allow some buffer
+    Fee: fee,
   };
 
-  return await client.autofill(payment);
+  return payment;
+};
+
+export const prepareAccountDelete = async (client: Client, wallet: Wallet, destination: string): Promise<AccountDelete> => {
+  const ledgerIndex = await client.getLedgerIndex();
+
+  const transaction: AccountDelete = {
+    TransactionType: "AccountDelete",
+    Account: wallet.address,
+    Destination: destination,
+    LastLedgerSequence: ledgerIndex + 20000, // Allow 20000 ledgers buffer
+  };
+
+  return await client.autofill(transaction);
+};
+
+export const prepareAccountDeleteOffline = (
+  wallet: Wallet,
+  destination: string,
+  sequence: number,
+  ledgerIndex: number,
+  fee: string
+): AccountDelete => {
+  const transaction: AccountDelete = {
+    TransactionType: "AccountDelete",
+    Account: wallet.address,
+    Destination: destination,
+    Sequence: sequence,
+    LastLedgerSequence: ledgerIndex + 20000,
+    Fee: fee,
+  };
+
+  return transaction;
 };
 
 export const signTransaction = (wallet: Wallet, transaction: any): { tx_blob: string; hash: string } => {

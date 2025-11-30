@@ -1,11 +1,25 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Linking, Alert, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
+  Linking,
+  Alert,
+  Platform,
+} from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import { typography, spacing, borderRadius, shadows } from "../theme";
 import { Button } from "../components";
 import { useThemedColors } from "../context/ThemeContext";
 import { useWallet } from "../context/WalletContext";
+import { parseBlockchainParams, BlockchainParams } from "../utils/smsParser";
+import { SMS_GATEWAY_NUMBER } from "../constants";
+import * as SMS from "expo-sms";
+import { TextInput } from "react-native";
 
 interface PayScreenProps {
   navigation: any;
@@ -18,13 +32,26 @@ interface PaymentQRData {
   tokenAddress: string;
 }
 
-const SMS_GATEWAY_NUMBER = "+1 510 853-8927";
-
 export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
-  const { submitPayment, getSignedPayment, loading: walletLoading } = useWallet();
+  const {
+    submitPayment,
+    getSignedPayment,
+    getSignedPaymentOffline,
+    loading: walletLoading,
+    wallet,
+    isOfflineMode,
+    connected,
+  } = useWallet();
   const [scannedData, setScannedData] = useState<PaymentQRData | null>(null);
   const [processing, setProcessing] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
+
+  // Offline Flow
+  const [offlineParams, setOfflineParams] = useState<BlockchainParams | null>(
+    null
+  );
+  const [paramsInput, setParamsInput] = useState<string>("");
+  const [showParamsSection, setShowParamsSection] = useState(false);
 
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -65,10 +92,49 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
     }
   };
 
+  const handleParamsCheck = (text: string) => {
+    setParamsInput(text);
+    const params = parseBlockchainParams(text);
+    if (params) {
+      setOfflineParams(params);
+    } else {
+      setOfflineParams(null);
+    }
+  };
+
+  const handleRequestParams = async () => {
+    if (!wallet) {
+      Alert.alert("Error", "Please connect or import your wallet first.");
+      return;
+    }
+    const isAvailable = await SMS.isAvailableAsync();
+    if (isAvailable) {
+      await SMS.sendSMSAsync([SMS_GATEWAY_NUMBER], `PARAMS ${wallet.address}`);
+    } else {
+      Alert.alert("Error", "SMS is not available on this device");
+    }
+  };
+
+  const handleSimulateScan = () => {
+    // Mock data based on mobile-app/utils/exampleQrCodeData.json
+    // using valid testnet address for testing flow if needed, but keeping structure
+    setScannedData({
+      walletAddress: "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe", // Example destination
+      amountOfToken: "0.1",
+      tokenSymbol: "XRP",
+      tokenAddress: "", // Example issuer
+    });
+  };
+
   const isNativeXRP = useMemo(() => {
     if (!scannedData) return false;
     const { tokenSymbol, tokenAddress } = scannedData;
-    return tokenSymbol === "XRPL" || tokenSymbol === "XRP" || !tokenSymbol || !tokenAddress;
+    return (
+      tokenSymbol === "XRPL" ||
+      tokenSymbol === "XRP" ||
+      !tokenSymbol ||
+      !tokenAddress
+    );
   }, [scannedData]);
 
   const handlePayInternet = async () => {
@@ -79,7 +145,12 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
       const currency = isNativeXRP ? "XRP" : scannedData.tokenSymbol;
       const issuer = isNativeXRP ? undefined : scannedData.tokenAddress;
 
-      const hash = await submitPayment(scannedData.walletAddress, scannedData.amountOfToken, currency, issuer);
+      const hash = await submitPayment(
+        scannedData.walletAddress,
+        scannedData.amountOfToken,
+        currency,
+        issuer
+      );
 
       navigation.navigate("PaymentSuccess", { hash });
       setScannedData(null); // Reset scan data after successful navigation
@@ -93,28 +164,70 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
   const handlePaySMS = async () => {
     if (!scannedData) return;
 
+    // If we are in offline mode OR not connected, we need the params flow
+    const requiresOfflineParams = isOfflineMode || !connected;
+
+    // 1. Check if offline params are ready (only if required)
+    if (requiresOfflineParams && !offlineParams) {
+      setShowParamsSection(true);
+      Alert.alert(
+        "Offline Mode",
+        "Please request and enter network parameters to sign this transaction offline."
+      );
+      return;
+    }
+
     setProcessing(true);
     try {
       const currency = isNativeXRP ? "XRP" : scannedData.tokenSymbol;
       const issuer = isNativeXRP ? undefined : scannedData.tokenAddress;
 
-      const signedBlob = await getSignedPayment(scannedData.walletAddress, scannedData.amountOfToken, currency, issuer);
+      let signedBlob;
+      if (requiresOfflineParams && offlineParams) {
+        // 2. Use offline signing with provided params
+        signedBlob = await getSignedPaymentOffline(
+          scannedData.walletAddress,
+          scannedData.amountOfToken,
+          offlineParams.sequence,
+          offlineParams.ledgerIndex,
+          offlineParams.fee,
+          currency,
+          issuer
+        );
+      } else {
+        // Online signing (autofill)
+        signedBlob = await getSignedPayment(
+          scannedData.walletAddress,
+          scannedData.amountOfToken,
+          currency,
+          issuer
+        );
+      }
 
-      const smsUrl = `sms:${SMS_GATEWAY_NUMBER}${Platform.OS === "ios" ? "&" : "?"}body=${encodeURIComponent(signedBlob)}`;
+      const smsUrl = `sms:${SMS_GATEWAY_NUMBER}${
+        Platform.OS === "ios" ? "&" : "?"
+      }body=${encodeURIComponent(signedBlob)}`;
 
       const canOpen = await Linking.canOpenURL(smsUrl);
       if (canOpen) {
         await Linking.openURL(smsUrl);
         // We can't track SMS success easily, so we just reset and go back
-        Alert.alert("SMS Opened", "Please send the SMS to complete the transaction.", [
-          {
-            text: "Done",
-            onPress: () => {
-              setScannedData(null);
-              navigation.goBack();
+        Alert.alert(
+          "SMS Opened",
+          "Please send the SMS to complete the transaction.",
+          [
+            {
+              text: "Done",
+              onPress: () => {
+                setScannedData(null);
+                setOfflineParams(null);
+                setParamsInput("");
+                setShowParamsSection(false);
+                navigation.goBack();
+              },
             },
-          },
-        ]);
+          ]
+        );
       } else {
         Alert.alert("Error", "Cannot open SMS app");
       }
@@ -127,13 +240,22 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
 
   const resetScan = () => {
     setScannedData(null);
+    setOfflineParams(null);
+    setParamsInput("");
+    setShowParamsSection(false);
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
         <View style={styles.header}>
-          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => navigation.goBack()}
+          >
             <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.title}>Scan to Pay</Text>
@@ -145,15 +267,26 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
               {permission?.granted ? (
                 <CameraView
                   style={StyleSheet.absoluteFill}
-                  onBarcodeScanned={scannedData ? undefined : handleBarCodeScanned}
+                  onBarcodeScanned={
+                    scannedData ? undefined : handleBarCodeScanned
+                  }
                   barcodeScannerSettings={{
                     barcodeTypes: ["qr"],
                   }}
                 />
               ) : (
                 <>
-                  <Ionicons name="qr-code-outline" size={96} color={colors.primary} />
-                  <Button title="Allow Camera" onPress={requestPermission} variant="outline" style={{ marginTop: spacing.md }} />
+                  <Ionicons
+                    name="qr-code-outline"
+                    size={96}
+                    color={colors.primary}
+                  />
+                  <Button
+                    title="Allow Camera"
+                    onPress={requestPermission}
+                    variant="outline"
+                    style={{ marginTop: spacing.md }}
+                  />
                 </>
               )}
             </View>
@@ -169,11 +302,55 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
 
               <Text style={styles.label}>Amount:</Text>
               <Text style={styles.amount}>
-                {scannedData.amountOfToken} <Text style={styles.symbol}>{isNativeXRP ? "XRP" : scannedData.tokenSymbol}</Text>
+                {scannedData.amountOfToken}{" "}
+                <Text style={styles.symbol}>
+                  {isNativeXRP ? "XRP" : scannedData.tokenSymbol}
+                </Text>
               </Text>
 
-              {!isNativeXRP && <Text style={styles.issuer}>Issuer: {scannedData.tokenAddress}</Text>}
+              {!isNativeXRP && (
+                <Text style={styles.issuer}>
+                  Issuer: {scannedData.tokenAddress}
+                </Text>
+              )}
             </View>
+
+            {showParamsSection && (
+              <View style={styles.paramsContainer}>
+                <Text style={styles.paramsTitle}>
+                  Offline Payment Requirements
+                </Text>
+                <Text style={styles.helper}>
+                  To pay offline, we need current network parameters.
+                </Text>
+
+                <Button
+                  title="1. Request Params (SMS)"
+                  onPress={handleRequestParams}
+                  variant="secondary"
+                  style={{ marginVertical: 10 }}
+                />
+
+                <TextInput
+                  style={styles.paramsInput}
+                  placeholder="2. Paste SMS Reply (SEQ:...)"
+                  value={paramsInput}
+                  onChangeText={handleParamsCheck}
+                  multiline
+                />
+
+                {offlineParams && (
+                  <View style={styles.validParams}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={20}
+                      color="#27ae60"
+                    />
+                    <Text style={styles.validParamsText}>Params Valid</Text>
+                  </View>
+                )}
+              </View>
+            )}
 
             <View style={styles.actions}>
               <Button
@@ -181,16 +358,37 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
                 onPress={handlePayInternet}
                 disabled={processing || walletLoading}
                 loading={processing}
-                icon={<Ionicons name="globe-outline" size={20} color={colors.textWhite} />}
+                icon={
+                  <Ionicons
+                    name="globe-outline"
+                    size={20}
+                    color={colors.textWhite}
+                  />
+                }
               />
               <Button
                 title="Pay via SMS"
                 variant="secondary"
                 onPress={handlePaySMS}
-                disabled={processing || walletLoading}
-                icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.textWhite} />}
+                disabled={
+                  processing ||
+                  walletLoading ||
+                  (showParamsSection && !offlineParams)
+                }
+                icon={
+                  <Ionicons
+                    name="chatbubble-ellipses-outline"
+                    size={20}
+                    color={colors.textWhite}
+                  />
+                }
               />
-              <Button title="Cancel / Rescan" variant="outline" onPress={resetScan} disabled={processing} />
+              <Button
+                title="Cancel / Rescan"
+                variant="outline"
+                onPress={resetScan}
+                disabled={processing}
+              />
             </View>
           </View>
         )}
@@ -295,5 +493,40 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     actions: {
       gap: spacing.md,
+    },
+    paramsContainer: {
+      backgroundColor: colors.surface,
+      padding: spacing.md,
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    paramsTitle: {
+      ...typography.h3,
+      marginBottom: spacing.xs,
+      color: colors.textPrimary,
+    },
+    paramsInput: {
+      backgroundColor: colors.background,
+      padding: spacing.md,
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      minHeight: 60,
+      textAlignVertical: "top",
+      color: colors.textPrimary,
+      marginBottom: spacing.sm,
+    },
+    validParams: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: spacing.sm,
+      backgroundColor: "#e8f8f5",
+      borderRadius: borderRadius.sm,
+    },
+    validParamsText: {
+      marginLeft: spacing.sm,
+      color: "#27ae60",
+      fontWeight: "bold",
     },
   });
