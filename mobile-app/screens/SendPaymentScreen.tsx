@@ -28,7 +28,7 @@ interface SendPaymentScreenProps {
 type Step = "amount" | "security" | "params" | "confirm";
 
 export default function SendPaymentScreen({ navigation }: SendPaymentScreenProps) {
-  const { getSignedPayment, getSignedPaymentOffline, connected, wallet } = useWallet();
+  const { getSignedPayment, getSignedPaymentOffline, connected, wallet, isOfflineMode } = useWallet();
   const [step, setStep] = useState<Step>("amount");
   const [amount, setAmount] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -56,8 +56,14 @@ export default function SendPaymentScreen({ navigation }: SendPaymentScreenProps
       return;
     }
 
-    // Always use offline flow (params step) regardless of connection status
-    setStep("params");
+    // If global offline mode is ON, always go to params.
+    // If connected is FALSE (actual offline), go to params.
+    // Otherwise, go to confirm (online flow).
+    if (isOfflineMode || !connected) {
+      setStep("params");
+    } else {
+      setStep("confirm");
+    }
   };
 
   const handleRequestParams = async () => {
@@ -93,6 +99,9 @@ export default function SendPaymentScreen({ navigation }: SendPaymentScreenProps
       // 3. Generate the signed tx to send the money but not submiting it yet
       // We are sending TO the temp wallet address
       let signedTxBlob;
+
+      // Use offline signing if we have offlineParams (from params step)
+      // OR if we are forcing offline mode and have params
       if (offlineParams) {
         signedTxBlob = await getSignedPaymentOffline(
           tempWallet.address,
@@ -262,8 +271,9 @@ ${signedTxBlob}`;
         <TouchableOpacity
           onPress={() => {
             if (step === "confirm") {
-              // Always go back to params since we always force offline flow
-              setStep("params");
+              // If we used params (offline mode or not connected), go back to params
+              if (isOfflineMode || !connected) setStep("params");
+              else setStep("security");
             } else if (step === "params") setStep("security");
             else if (step === "security") setStep("amount");
             else navigation.goBack();

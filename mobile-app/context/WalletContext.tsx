@@ -16,6 +16,8 @@ interface WalletContextValue {
   client: Client | null;
   wallet: Wallet | null;
   connected: boolean;
+  isOfflineMode: boolean;
+  toggleOfflineMode: () => void;
   balance: string;
   rate: number;
   statusMessage: string | null;
@@ -37,6 +39,7 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [balance, setBalance] = useState('0');
   const [connected, setConnected] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -50,6 +53,26 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
   }, [client]);
+
+  const toggleOfflineMode = () => {
+    setIsOfflineMode((prev) => {
+      const newState = !prev;
+      if (newState) {
+        // If turning offline mode ON, disconnect the client if it's connected
+        if (client && connected) {
+           // Optional: we could disconnect here to simulate true offline, 
+           // but keeping the client instance might be useful for quick reconnection.
+           // For strictly UI flow toggling, we just rely on the boolean.
+        }
+      } else {
+        // If turning offline mode OFF, ensure we are connected
+        if (!connected) {
+          connect();
+        }
+      }
+      return newState;
+    });
+  };
 
   useEffect(() => {
     // Attempt to restore a previously saved wallet on mount
@@ -222,6 +245,8 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       client,
       wallet,
       connected,
+      isOfflineMode,
+      toggleOfflineMode,
       balance,
       rate,
       statusMessage,
@@ -234,7 +259,7 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       getSignedPaymentOffline,
       importWallet,
     }),
-    [client, wallet, connected, balance, rate, statusMessage, loading]
+    [client, wallet, connected, isOfflineMode, balance, rate, statusMessage, loading]
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;

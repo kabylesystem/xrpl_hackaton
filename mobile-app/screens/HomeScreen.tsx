@@ -37,7 +37,7 @@ const sampleTransactions = [
 ];
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const { wallet, balance, rate, connected, statusMessage, refreshBalance, importWallet, setupWallet } = useWallet();
+  const { wallet, balance, rate, connected, statusMessage, refreshBalance, importWallet, setupWallet, isOfflineMode, toggleOfflineMode } = useWallet();
   const { settings } = useSettings();
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -152,7 +152,27 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       <ScrollView style={styles.container} contentContainerStyle={styles.content} stickyHeaderIndices={[0]} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.badge}>{connected ? "Connected" : "Offline"}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: connected ? "#27ae60" : "#e74c3c" }} />
+                <Text style={styles.badge}>{connected ? "Online" : "Disconnected"}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={toggleOfflineMode}
+                style={{
+                  backgroundColor: isOfflineMode ? colors.primary : colors.surface,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: isOfflineMode ? colors.primary : colors.border,
+                }}
+              >
+                <Text style={[styles.badge, { color: isOfflineMode ? "#fff" : colors.textPrimary, fontSize: 10, fontWeight: "bold" }]}>
+                  {isOfflineMode ? "OFFLINE MODE" : "ONLINE MODE"}
+                </Text>
+              </TouchableOpacity>
+            </View>
             <Text style={styles.title}>Hi, {displayName}</Text>
             <Text style={styles.subtitle} numberOfLines={2}>
               NGN ↔ USDC bridge on XRPL testnet. {wallet ? "Wallet ready." : "Create your wallet."}

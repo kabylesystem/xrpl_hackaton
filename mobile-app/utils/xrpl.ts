@@ -131,7 +131,7 @@ export const preparePaymentOffline = (
     Destination: destination,
     Amount: paymentAmount,
     Sequence: sequence,
-    LastLedgerSequence: ledgerIndex + 200, // Allow some buffer
+    LastLedgerSequence: ledgerIndex + 20000, // Allow some buffer
     Fee: fee,
   };
 
@@ -160,7 +160,7 @@ export const prepareAccountDeleteOffline = (
     Account: wallet.address,
     Destination: destination,
     Sequence: sequence,
-    LastLedgerSequence: ledgerIndex + 200,
+    LastLedgerSequence: ledgerIndex + 20000,
     Fee: fee,
   };
 

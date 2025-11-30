@@ -27,7 +27,7 @@ interface ClaimPaymentScreenProps {
 }
 
 export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenProps) {
-  const { client, wallet } = useWallet();
+  const { client, wallet, isOfflineMode } = useWallet();
   const [loading, setLoading] = useState(false);
   const [manualInput, setManualInput] = useState("");
   const [parsedData, setParsedData] = useState<{ encryptedSeed: string; signedTx: string; amount?: string; hint?: string } | null>(null);
@@ -102,7 +102,8 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
     if (!parsedData) return;
 
     // Instead of opening modal directly, check if we need params
-    if (!offlineParams) {
+    // Force params if global offline mode is ON or not connected
+    if (isOfflineMode || !client || !offlineParams) {
       setShowParamsSection(true);
       Alert.alert("Offline Mode", "Please request and enter network parameters to claim this offline.");
       return;
@@ -123,7 +124,7 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
       return;
     }
 
-    if (!offlineParams) {
+    if ((isOfflineMode || !client) && !offlineParams) {
       setPasswordModalVisible(false);
       Alert.alert("Error", "Missing network parameters. Please request them via SMS.");
       return;
@@ -152,18 +153,27 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
       // 3. Prepare AccountDelete transaction from temp wallet to user wallet
       let signedDeleteTx;
       try {
-        // Always use offline construction with provided params
-        // We use Sequence: 1 for the new temp wallet as it's the first transaction
-        const deleteTxJson = prepareAccountDeleteOffline(
-          tempWallet,
-          wallet.address,
-          1, // Sequence 1
-          offlineParams.ledgerIndex,
-          offlineParams.fee
-        );
+        if (offlineParams) {
+          // Always use offline construction with provided params
+          // We use Sequence: 1 for the new temp wallet as it's the first transaction
+          const deleteTxJson = prepareAccountDeleteOffline(
+            tempWallet,
+            wallet.address,
+            1, // Sequence 1
+            offlineParams.ledgerIndex,
+            offlineParams.fee
+          );
 
-        const signed = signTransaction(tempWallet, deleteTxJson);
-        signedDeleteTx = signed.tx_blob;
+          const signed = signTransaction(tempWallet, deleteTxJson);
+          signedDeleteTx = signed.tx_blob;
+        } else if (client) {
+          // Online fallback if available and not forced offline
+          const preparedDelete = await prepareAccountDelete(client, tempWallet, wallet.address);
+          const signed = signTransaction(tempWallet, preparedDelete);
+          signedDeleteTx = signed.tx_blob;
+        } else {
+          throw new Error("No connection and no params");
+        }
       } catch (err) {
         console.error("Failed to sign delete tx", err);
         throw new Error("Failed to sign transaction");

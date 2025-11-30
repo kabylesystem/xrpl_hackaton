@@ -23,7 +23,7 @@ interface PaymentQRData {
 }
 
 export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
-  const { submitPayment, getSignedPayment, getSignedPaymentOffline, loading: walletLoading, wallet } = useWallet();
+  const { submitPayment, getSignedPayment, getSignedPaymentOffline, loading: walletLoading, wallet, isOfflineMode, connected } = useWallet();
   const [scannedData, setScannedData] = useState<PaymentQRData | null>(null);
   const [processing, setProcessing] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
@@ -134,8 +134,11 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
   const handlePaySMS = async () => {
     if (!scannedData) return;
 
-    // 1. Check if offline params are ready
-    if (!offlineParams) {
+    // If we are in offline mode OR not connected, we need the params flow
+    const requiresOfflineParams = isOfflineMode || !connected;
+
+    // 1. Check if offline params are ready (only if required)
+    if (requiresOfflineParams && !offlineParams) {
       setShowParamsSection(true);
       Alert.alert("Offline Mode", "Please request and enter network parameters to sign this transaction offline.");
       return;
@@ -146,16 +149,22 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
       const currency = isNativeXRP ? "XRP" : scannedData.tokenSymbol;
       const issuer = isNativeXRP ? undefined : scannedData.tokenAddress;
 
-      // 2. Use offline signing with provided params
-      const signedBlob = await getSignedPaymentOffline(
-        scannedData.walletAddress,
-        scannedData.amountOfToken,
-        offlineParams.sequence,
-        offlineParams.ledgerIndex,
-        offlineParams.fee,
-        currency,
-        issuer
-      );
+      let signedBlob;
+      if (requiresOfflineParams && offlineParams) {
+        // 2. Use offline signing with provided params
+        signedBlob = await getSignedPaymentOffline(
+          scannedData.walletAddress,
+          scannedData.amountOfToken,
+          offlineParams.sequence,
+          offlineParams.ledgerIndex,
+          offlineParams.fee,
+          currency,
+          issuer
+        );
+      } else {
+        // Online signing (autofill)
+        signedBlob = await getSignedPayment(scannedData.walletAddress, scannedData.amountOfToken, currency, issuer);
+      }
 
       const smsUrl = `sms:${SMS_GATEWAY_NUMBER}${Platform.OS === "ios" ? "&" : "?"}body=${encodeURIComponent(signedBlob)}`;
 
