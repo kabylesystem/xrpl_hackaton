@@ -56,11 +56,16 @@ app.post("/sms/receive", async (req: Request, res: Response): Promise<void> => {
     // 2. Signed Single TX: Long hex string or JSON with tx_blob
     const hexMatch = body.match(/[0-9A-Fa-f]{100,}/);
     const isJsonTx = body.trim().startsWith("{") || body.includes("tx_blob");
+    
+    // 3. Blockchain Params Request
+    const paramsMatch = body.match(/PARAMS\s+(r[a-zA-Z0-9]{24,34})/);
 
     if (isClaim) {
       await handleClaimTransaction(from, body);
     } else if (hexMatch || isJsonTx) {
       await handleSignedTransaction(from, body);
+    } else if (paramsMatch) {
+      await handleParamsRequest(from, paramsMatch[1]);
     } else {
       await handleSimplePayment(from, body);
     }

@@ -19,12 +19,11 @@ import { Wallet, AccountDelete } from "xrpl";
 import { useWallet } from "../context/WalletContext";
 import { prepareAccountDelete, signTransaction } from "../utils/xrpl";
 import { decrypt } from "../utils/encryption";
+import { SMS_GATEWAY_NUMBER } from "../constants";
 
 interface ClaimPaymentScreenProps {
   navigation: any;
 }
-
-const SMS_GATEWAY_NUMBER = "123456"; // Mock gateway number
 
 export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenProps) {
   const { client, wallet } = useWallet();
@@ -46,7 +45,7 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
       // Transaction Data:
       // {blob}
 
-      const seedMatch = text.match(/Encrypted Key:\s*([A-Za-z0-9+/=]+)/); // Base64
+      const seedMatch = text.match(/Encrypted Key:\s*([A-Za-z0-9+/=:]+)/); // Base64 and colons
       const txMatch = text.match(/Transaction Data:\s*([A-Fa-f0-9]+)/);
       const amountMatch = text.match(/Here is ([0-9.]+) XRP/);
       const hintMatch = text.match(/Hint:\s*(.+)/);

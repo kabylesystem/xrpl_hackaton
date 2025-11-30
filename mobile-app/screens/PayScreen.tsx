@@ -6,6 +6,7 @@ import { typography, spacing, borderRadius, shadows } from "../theme";
 import { Button } from "../components";
 import { useThemedColors } from "../context/ThemeContext";
 import { useWallet } from "../context/WalletContext";
+import { SMS_GATEWAY_NUMBER } from "../constants";
 
 interface PayScreenProps {
   navigation: any;
@@ -17,8 +18,6 @@ interface PaymentQRData {
   tokenSymbol: string;
   tokenAddress: string;
 }
-
-const SMS_GATEWAY_NUMBER = "+1 2232997953";
 
 export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
   const { submitPayment, getSignedPayment, loading: walletLoading } = useWallet();
