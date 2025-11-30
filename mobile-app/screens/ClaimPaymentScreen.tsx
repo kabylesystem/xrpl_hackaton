@@ -101,9 +101,11 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
   const initiateClaim = () => {
     if (!parsedData) return;
 
-    // Instead of opening modal directly, check if we need params
-    // Force params if global offline mode is ON or not connected
-    if (isOfflineMode || !client || !offlineParams) {
+    // Check if we need offline params (Offline Mode ON OR No Connection)
+    // If connected AND offline mode is OFF, we skip params and go online
+    const requiresOfflineParams = isOfflineMode || !client;
+
+    if (requiresOfflineParams && !offlineParams) {
       setShowParamsSection(true);
       Alert.alert("Offline Mode", "Please request and enter network parameters to claim this offline.");
       return;
@@ -124,7 +126,9 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
       return;
     }
 
-    if ((isOfflineMode || !client) && !offlineParams) {
+    const requiresOfflineParams = isOfflineMode || !client;
+
+    if (requiresOfflineParams && !offlineParams) {
       setPasswordModalVisible(false);
       Alert.alert("Error", "Missing network parameters. Please request them via SMS.");
       return;
@@ -153,7 +157,7 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
       // 3. Prepare AccountDelete transaction from temp wallet to user wallet
       let signedDeleteTx;
       try {
-        if (offlineParams) {
+        if (requiresOfflineParams && offlineParams) {
           // Always use offline construction with provided params
           // We use Sequence: 1 for the new temp wallet as it's the first transaction
           const deleteTxJson = prepareAccountDeleteOffline(

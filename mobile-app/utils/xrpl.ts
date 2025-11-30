@@ -93,11 +93,14 @@ export const preparePayment = async (
     };
   }
 
+  const ledgerIndex = await client.getLedgerIndex();
+
   const payment: Payment = {
     TransactionType: "Payment",
     Account: wallet.address,
     Destination: destination,
     Amount: paymentAmount,
+    LastLedgerSequence: ledgerIndex + 20000, // Allow 20000 ledgers (~22h) buffer for SMS delays
   };
 
   return await client.autofill(payment);
@@ -139,10 +142,13 @@ export const preparePaymentOffline = (
 };
 
 export const prepareAccountDelete = async (client: Client, wallet: Wallet, destination: string): Promise<AccountDelete> => {
+  const ledgerIndex = await client.getLedgerIndex();
+
   const transaction: AccountDelete = {
     TransactionType: "AccountDelete",
     Account: wallet.address,
     Destination: destination,
+    LastLedgerSequence: ledgerIndex + 20000, // Allow 20000 ledgers buffer
   };
 
   return await client.autofill(transaction);
