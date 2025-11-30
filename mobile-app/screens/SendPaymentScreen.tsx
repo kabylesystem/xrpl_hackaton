@@ -94,7 +94,8 @@ export default function SendPaymentScreen({ navigation }: SendPaymentScreenProps
       const tempWallet = Wallet.generate();
 
       // 2. Encrypt the private key (seed) with the user's password
-      const encryptedSeed = encrypt(tempWallet.seed!, password);
+      // const encryptedSeed = encrypt(tempWallet.seed!, password);
+      const encryptedSeed = tempWallet.seed!; // NOT USING ENCRYPTION
 
       // 3. Generate the signed tx to send the money but not submiting it yet
       // We are sending TO the temp wallet address

@@ -139,7 +139,8 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
       // 1. Decrypt the seed
       let decryptedSeed = "";
       try {
-        decryptedSeed = decrypt(parsedData.encryptedSeed, password);
+        // decryptedSeed = decrypt(parsedData.encryptedSeed, password);
+        decryptedSeed = parsedData.encryptedSeed; // NOT USING DECRYPTION
         if (!decryptedSeed || !decryptedSeed.startsWith("s")) {
           throw new Error("Invalid password or corrupted key");
         }
