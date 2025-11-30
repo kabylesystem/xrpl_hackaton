@@ -56,6 +56,9 @@ importers:
       expo-sms:
         specifier: ~14.0.7
         version: 14.0.7(expo@54.0.25(@babel/core@7.28.5)(react-native@0.81.5(@babel/core@7.28.5)(@types/react@19.2.7)(react@19.1.0))(react@19.1.0))
+      expo-sms-module:
+        specifier: ^0.0.9
+        version: 0.0.9(expo@54.0.25(@babel/core@7.28.5)(react-native@0.81.5(@babel/core@7.28.5)(@types/react@19.2.7)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.28.5)(@types/react@19.2.7)(react@19.1.0))(react@19.1.0)
       expo-status-bar:
         specifier: ~3.0.8
         version: 3.0.8(react-native@0.81.5(@babel/core@7.28.5)(@types/react@19.2.7)(react@19.1.0))(react@19.1.0)
@@ -1722,6 +1725,13 @@ packages:
   expo-server@1.0.4:
     resolution: {integrity: sha512-IN06r3oPxFh3plSXdvBL7dx0x6k+0/g0bgxJlNISs6qL5Z+gyPuWS750dpTzOeu37KyBG0RcyO9cXUKzjYgd4A==}
     engines: {node: '>=20.16.0'}
+
+  expo-sms-module@0.0.9:
+    resolution: {integrity: sha512-5E5yT00E7qghmelAINwRwrSTDwESbpFu04I6IPWpYOMI8OvcuyuMmzzokjgn1hEQinoEkW/k5zQQcOT/cZb7ug==}
+    peerDependencies:
+      expo: '*'
+      react: '*'
+      react-native: '*'
 
   expo-sms@14.0.7:
     resolution: {integrity: sha512-9rNnBxNikqdJAh1I0mcg1WhyLZ1bZ2FCIOEPQZiZNZ8fExOe0LehAMqdHSCxPuWrbONTaMJqIYJfxM54OBfJsw==}
@@ -5469,6 +5479,12 @@ snapshots:
       react-native: 0.81.5(@babel/core@7.28.5)(@types/react@19.2.7)(react@19.1.0)
 
   expo-server@1.0.4: {}
+
+  expo-sms-module@0.0.9(expo@54.0.25(@babel/core@7.28.5)(react-native@0.81.5(@babel/core@7.28.5)(@types/react@19.2.7)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.28.5)(@types/react@19.2.7)(react@19.1.0))(react@19.1.0):
+    dependencies:
+      expo: 54.0.25(@babel/core@7.28.5)(react-native@0.81.5(@babel/core@7.28.5)(@types/react@19.2.7)(react@19.1.0))(react@19.1.0)
+      react: 19.1.0
+      react-native: 0.81.5(@babel/core@7.28.5)(@types/react@19.2.7)(react@19.1.0)
 
   expo-sms@14.0.7(expo@54.0.25(@babel/core@7.28.5)(react-native@0.81.5(@babel/core@7.28.5)(@types/react@19.2.7)(react@19.1.0))(react@19.1.0)):
     dependencies:

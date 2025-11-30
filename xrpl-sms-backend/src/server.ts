@@ -17,10 +17,7 @@ const app = express();
 app.use(express.urlencoded({ extended: false }));
 
 // Twilio client
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID!,
-  process.env.TWILIO_AUTH_TOKEN!
-);
+const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!);
 
 // Types
 interface User {
@@ -33,8 +30,8 @@ interface UserDatabase {
 // Fake DB
 const users: UserDatabase = {
   "+33759687877": {
-    xrpl_address: "rsGQHatLEmGzgjvYksFEyV3UkEi61Low5J"
-  }
+    xrpl_address: "rsGQHatLEmGzgjvYksFEyV3UkEi61Low5J",
+  },
 };
 
 // FX Rate
@@ -53,10 +50,11 @@ app.post("/sms/receive", async (req: Request, res: Response): Promise<void> => {
 
   try {
     // Detect if it's a signed transaction (JSON or raw hexa)
-    const isHexTx = body.trim().match(/^[0-9A-Fa-f]{100,}$/);
+    // We look for a long hex string (likely the signed blob) anywhere in the body
+    const hexMatch = body.match(/[0-9A-Fa-f]{100,}/);
     const isJsonTx = body.trim().startsWith("{") || body.includes("tx_blob");
-    
-    if (isHexTx || isJsonTx) {
+
+    if (hexMatch || isJsonTx) {
       await handleSignedTransaction(from, body);
     } else {
       await handleSimplePayment(from, body);
@@ -64,7 +62,6 @@ app.post("/sms/receive", async (req: Request, res: Response): Promise<void> => {
 
     res.type("text/xml");
     res.send("<Response></Response>");
-
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("❌ ERROR:", msg);
@@ -74,7 +71,7 @@ app.post("/sms/receive", async (req: Request, res: Response): Promise<void> => {
       await twilioClient.messages.create({
         from: process.env.TWILIO_PHONE_NUMBER!,
         to: from,
-        body: `Payment failed: ${msg.slice(0, 100)}`
+        body: `Payment failed: ${msg.slice(0, 100)}`,
       });
       console.log("📨 Error SMS sent");
     } catch (smsErr) {
@@ -99,10 +96,18 @@ async function handleSignedTransaction(from: string, body: string) {
       const parsed = JSON.parse(body);
       signedTxBlob = parsed.tx_blob;
     } else {
-      signedTxBlob = body.trim();
+      // Try to find the hex blob in the text
+      const hexMatch = body.match(/[0-9A-Fa-f]{100,}/);
+      if (hexMatch) {
+        signedTxBlob = hexMatch[0];
+      } else {
+        signedTxBlob = body.trim();
+      }
     }
   } catch {
-    signedTxBlob = body.trim();
+    // Fallback: try regex again or just trim
+    const hexMatch = body.match(/[0-9A-Fa-f]{100,}/);
+    signedTxBlob = hexMatch ? hexMatch[0] : body.trim();
   }
 
   console.log("📦 tx_blob:", signedTxBlob.slice(0, 50), "...");
@@ -119,10 +124,7 @@ async function handleSignedTransaction(from: string, body: string) {
 
   console.log("📊 Result:", result.result.engine_result);
 
-  if (
-    result.result.engine_result === "tesSUCCESS" ||
-    result.result.engine_result === "terQUEUED"
-  ) {
+  if (result.result.engine_result === "tesSUCCESS" || result.result.engine_result === "terQUEUED") {
     const hash = result.result.tx_json.hash || "N/A";
     console.log("✅ Transaction successfully broadcast!");
     console.log("🔗 Hash:", hash);
@@ -131,11 +133,10 @@ async function handleSignedTransaction(from: string, body: string) {
     await twilioClient.messages.create({
       from: process.env.TWILIO_PHONE_NUMBER!,
       to: from,
-      body: `Payment confirmed! TX: ${hash.slice(0, 12)}`
+      body: `Payment confirmed! TX: ${hash.slice(0, 12)}`,
     });
 
     console.log("📨 Confirmation SMS sent");
-
   } else {
     throw new Error(`Broadcast failed: ${result.result.engine_result}`);
   }
@@ -162,7 +163,7 @@ app.get("/price", (req, res) => {
   res.json({
     rate: rate,
     timestamp: new Date().toISOString(),
-    pair: "NGN/USD"
+    pair: "NGN/USD",
   });
 });
 

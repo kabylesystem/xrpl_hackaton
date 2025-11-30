@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as SMS from "expo-sms";
-import { Wallet } from "xrpl";
+import { Wallet, AccountDelete } from "xrpl";
 
 import { useWallet } from "../context/WalletContext";
 import { prepareAccountDelete, signTransaction } from "../utils/xrpl";
@@ -28,7 +28,7 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
   const { client, wallet } = useWallet();
   const [loading, setLoading] = useState(false);
   const [manualInput, setManualInput] = useState("");
-  const [parsedData, setParsedData] = useState<{ seed: string; signedTx: string } | null>(null);
+  const [parsedData, setParsedData] = useState<{ seed: string; signedTx: string; amount?: string } | null>(null);
 
   const handleParseSMS = (text: string) => {
     try {
@@ -42,16 +42,21 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
 
       const seedMatch = text.match(/Private Key:\s*([s][a-zA-Z0-9]+)/);
       const txMatch = text.match(/Transaction Data:\s*([A-Fa-f0-9]+)/);
+      const amountMatch = text.match(/Here is ([0-9.]+) XRP/);
 
       if (seedMatch && txMatch) {
-        setParsedData({
+        const data = {
           seed: seedMatch[1].trim(),
           signedTx: txMatch[1].trim(),
-        });
+          amount: amountMatch ? amountMatch[1] : undefined,
+        };
+        setParsedData(data);
         return true;
       }
+      setParsedData(null);
       return false;
     } catch (e) {
+      setParsedData(null);
       return false;
     }
   };
@@ -68,82 +73,42 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
       const tempWallet = Wallet.fromSeed(parsedData.seed);
 
       // 2. Prepare AccountDelete transaction from temp wallet to user wallet
-      // Note: In a real scenario, we need to know the sequence number of the temp wallet.
-      // Since we are offline/offline-ish, we might guess it is sequence+1 if the first tx was sequence.
-      // HOWEVER, prepareAccountDelete will try to autofill from the network.
-      // If we want fully offline generation we need to know the sequence manually.
-      // But here we have the client connected in the context, so we can autofill.
-      
-      // Wait a brief moment to ensure the funding tx (if submitted via gateway) would be 'known' 
-      // OR, more likely, we generate the second tx assuming the first one will succeed.
-      // But autofill needs the account to exist on ledger to get sequence.
-      // If the account is not yet funded on ledger, autofill will fail.
-      
-      // CRITICAL: The prompt says "The SMS_GATEWAY_NUMBER will submit both transaction".
-      // This implies we generate the second transaction assuming the first one will pass.
-      // For a new wallet, sequence is usually 1 (after funding).
-      // But 'autofill' requires network. 
-      // We will TRY to autofill. If it fails (account not found), we manually construct with Sequence: 1 (assuming first tx was seq 1 or funding).
-      // Actually, funding creates the account. The first tx from the sender sends money TO the temp wallet.
-      // So the temp wallet has 0 transactions. Its Sequence is 1 (or whatever the starting seq is on the network, usually 1 or based on ledger time).
-      // We'll try to autofill, if it fails we fall back to manual construction.
-      
       let signedDeleteTx;
       try {
         const preparedDelete = await prepareAccountDelete(client, tempWallet, wallet.address);
         const signed = signTransaction(tempWallet, preparedDelete);
         signedDeleteTx = signed.tx_blob;
       } catch (err) {
-        // Fallback for "Account not found" if not yet funded
         console.log("Autofill failed, attempting manual construction assuming Sequence 1");
-        
-        // We can't easily manually construct without current ledger info (fee, LastLedgerSequence)
-        // But since we are "Online" in the app to generate this claim (WalletContext has client),
-        // we should be able to get network info.
-        // If the account doesn't exist yet, we can't get its sequence.
-        // BUT, the user received money to this account.
-        // If the Sender's TX hasn't been submitted yet (it's in the SMS), the account DOES NOT EXIST.
-        
-        // So we must manually construct the AccountDelete.
-        // Sequence for a new account is typically 1 (after the first funding tx? No, account root starts with Sequence 1).
-        // Wait, if I receive a payment, my sequence doesn't increase.
-        // My sequence increases when I SEND a transaction.
-        // So the temp wallet has Sequence 1.
-        
-        // We need a Fee and LastLedgerSequence.
-        // We can get these from the client.
-        
-        const ledger = await client.request({ command: 'ledger', ledger_index: 'validated' });
-        const fee = await client.request({ command: 'fee' });
-        
-        const deleteTxJson = {
-          TransactionType: 'AccountDelete',
+
+        const ledger = await client.request({ command: "ledger", ledger_index: "validated" });
+        const fee = await client.request({ command: "fee" });
+
+        const deleteTxJson: AccountDelete = {
+          TransactionType: "AccountDelete",
           Account: tempWallet.address,
           Destination: wallet.address,
           Sequence: 1, // First transaction for this account
-          Fee: fee.result.drops.base_fee, // Estimate
-          LastLedgerSequence: ledger.result.ledger_index + 200, // Validity window
+          Fee: fee.result.drops.base_fee,
+          LastLedgerSequence: ledger.result.ledger_index + 200,
         };
-        
+
         const signed = tempWallet.sign(deleteTxJson);
         signedDeleteTx = signed.tx_blob;
       }
 
       // 3. Send SMS to gateway
       const gatewayMessage = `${parsedData.signedTx}|${signedDeleteTx}`;
-      
+
       const isAvailable = await SMS.isAvailableAsync();
       if (isAvailable) {
         const { result } = await SMS.sendSMSAsync([SMS_GATEWAY_NUMBER], gatewayMessage);
         if (result === "sent" || result === "unknown") {
-          Alert.alert("Success", "Claim request sent to gateway!", [
-             { text: "OK", onPress: () => navigation.navigate("Home") }
-          ]);
+          Alert.alert("Success", "Claim request sent to gateway!", [{ text: "OK", onPress: () => navigation.navigate("Home") }]);
         }
       } else {
         Alert.alert("Error", "SMS is not available on this device");
       }
-
     } catch (error: any) {
       Alert.alert("Error", "Failed to process claim: " + error.message);
     } finally {
@@ -151,11 +116,11 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
     }
   };
 
-  const onPaste = () => {
+  const onPasteCheck = () => {
     if (handleParseSMS(manualInput)) {
-      Alert.alert("Success", "Valid payment data found!");
+      Alert.alert("Success", "Valid payment data found! You can now claim it.");
     } else {
-      Alert.alert("Error", "Could not find valid payment data in text");
+      Alert.alert("Error", "Could not find valid payment data in text. Please copy the full SMS content.");
     }
   };
 
@@ -169,9 +134,7 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.instruction}>
-          Paste the full SMS text you received to claim your payment.
-        </Text>
+        <Text style={styles.instruction}>Copy the full SMS text you received and paste it below to claim your payment.</Text>
 
         <View style={styles.inputContainer}>
           <TextInput
@@ -180,36 +143,31 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
             placeholder="Paste SMS content here..."
             value={manualInput}
             onChangeText={(text) => {
-                setManualInput(text);
-                if (text.length > 50) handleParseSMS(text);
+              setManualInput(text);
+              handleParseSMS(text);
             }}
             textAlignVertical="top"
           />
         </View>
 
         {parsedData ? (
-             <View style={styles.successCard}>
-               <Ionicons name="checkmark-circle" size={40} color="#27ae60" />
-               <Text style={styles.successText}>Payment Data Detected</Text>
-               <Text style={styles.subText}>Ready to claim funds to your wallet</Text>
-             </View>
+          <View style={styles.successCard}>
+            <Ionicons name="checkmark-circle" size={40} color="#27ae60" />
+            <Text style={styles.successText}>Payment Found</Text>
+            <Text style={styles.subText}>{parsedData.amount ? `${parsedData.amount} XRP` : "Valid Transaction Data"}</Text>
+          </View>
         ) : (
-            <TouchableOpacity style={styles.pasteButton} onPress={onPaste}>
-                <Text style={styles.pasteButtonText}>Check Content</Text>
-            </TouchableOpacity>
+          <TouchableOpacity style={styles.pasteButton} onPress={onPasteCheck}>
+            <Text style={styles.pasteButtonText}>Check Content</Text>
+          </TouchableOpacity>
         )}
-
       </ScrollView>
 
       <View style={styles.footer}>
         {loading ? (
           <ActivityIndicator size="large" color="#27ae60" />
         ) : (
-          <TouchableOpacity 
-            style={[styles.claimButton, !parsedData && styles.disabledButton]} 
-            onPress={handleProcessClaim}
-            disabled={!parsedData}
-          >
+          <TouchableOpacity style={[styles.claimButton, !parsedData && styles.disabledButton]} onPress={handleProcessClaim} disabled={!parsedData}>
             <Text style={styles.claimButtonText}>Send Claim SMS</Text>
           </TouchableOpacity>
         )}
@@ -251,6 +209,8 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 20,
     height: 200,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
   },
   input: {
     flex: 1,
@@ -269,26 +229,29 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   successCard: {
-      backgroundColor: "#e8f8f5",
-      padding: 20,
-      borderRadius: 12,
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: "#27ae60"
+    backgroundColor: "#e8f8f5",
+    padding: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#27ae60",
   },
   successText: {
-      fontSize: 18,
-      fontWeight: "bold",
-      color: "#27ae60",
-      marginTop: 10
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#27ae60",
+    marginTop: 10,
   },
   subText: {
-      color: "#666",
-      marginTop: 4
+    color: "#666",
+    marginTop: 4,
+    fontWeight: "500",
   },
   footer: {
     padding: 20,
     backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
   },
   claimButton: {
     backgroundColor: "#27ae60",
@@ -305,4 +268,3 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
-
