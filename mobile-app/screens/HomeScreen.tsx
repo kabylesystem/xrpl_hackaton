@@ -1,13 +1,5 @@
 import React, { useMemo } from "react";
-import {
-  ScrollView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
-  Alert,
-} from "react-native";
+import { ScrollView, View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { useWallet } from "../context/WalletContext";
@@ -45,8 +37,7 @@ const sampleTransactions = [
 ];
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const { wallet, balance, rate, connected, statusMessage, refreshBalance } =
-    useWallet();
+  const { wallet, balance, rate, connected, statusMessage, refreshBalance } = useWallet();
   const { settings } = useSettings();
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -66,11 +57,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       target: "Receive",
     },
     {
-      label: "SMS",
-      helper: "Offline mode",
+      label: "Send",
+      helper: "Send to a contact",
       icon: "chatbubbles",
       color: colors.secondary,
-      target: "SMSPayment",
+      target: "SendPayment",
     },
     {
       label: "History",
@@ -89,10 +80,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const displayName = settings.displayName || "User";
   const transactions = sampleTransactions.map((tx) => ({
     ...tx,
-    description:
-      tx.description === "Café MamaKoko"
-        ? displayName
-        : tx.description.replace("SMS payment", `Payment from ${displayName}`),
+    description: tx.description === "Café MamaKoko" ? displayName : tx.description.replace("SMS payment", `Payment from ${displayName}`),
   }));
 
   const handleCopyAddress = async () => {
@@ -104,28 +92,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        stickyHeaderIndices={[0]}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} stickyHeaderIndices={[0]} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.badge}>
-              {connected ? "Connected" : "Offline"}
-            </Text>
+            <Text style={styles.badge}>{connected ? "Connected" : "Offline"}</Text>
             <Text style={styles.title}>Hi, {displayName}</Text>
             <Text style={styles.subtitle} numberOfLines={2}>
-              NGN ↔ USDC bridge on XRPL testnet.{" "}
-              {wallet ? "Wallet ready." : "Create your wallet."}
+              NGN ↔ USDC bridge on XRPL testnet. {wallet ? "Wallet ready." : "Create your wallet."}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => navigation.navigate("Settings")}
-            activeOpacity={0.85}
-          >
+          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Settings")} activeOpacity={0.85}>
             <Ionicons name="menu" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
@@ -142,22 +118,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <Text style={styles.sectionTitle}>Quick actions</Text>
           <View style={styles.quickGrid}>
             {quickActions.map((action) => (
-              <TouchableOpacity
-                key={action.label}
-                style={styles.quickCard}
-                onPress={() => navigation.navigate(action.target)}
-              >
-                <View
-                  style={[
-                    styles.quickIcon,
-                    { backgroundColor: `${action.color}15` },
-                  ]}
-                >
-                  <Ionicons
-                    name={action.icon as any}
-                    size={20}
-                    color={action.color}
-                  />
+              <TouchableOpacity key={action.label} style={styles.quickCard} onPress={() => navigation.navigate(action.target)}>
+                <View style={[styles.quickIcon, { backgroundColor: `${action.color}15` }]}>
+                  <Ionicons name={action.icon as any} size={20} color={action.color} />
                 </View>
                 <Text style={styles.quickLabel}>{action.label}</Text>
                 <Text style={styles.quickHelper}>{action.helper}</Text>
@@ -170,9 +133,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <View style={styles.sectionHeader}>
             <View>
               <Text style={styles.sectionTitle}>Live oracle</Text>
-              <Text style={styles.helper}>
-                1 USD ≈ {rate} NGN (refreshed locally)
-              </Text>
+              <Text style={styles.helper}>1 USD ≈ {rate} NGN (refreshed locally)</Text>
             </View>
             <TouchableOpacity onPress={() => refreshBalance()}>
               <Ionicons name="refresh" size={20} color={colors.primary} />
@@ -181,15 +142,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>XRPL wallet</Text>
-              <Text style={styles.infoValue}>
-                {wallet ? "Active" : "Missing"}
-              </Text>
+              <Text style={styles.infoValue}>{wallet ? "Active" : "Missing"}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Balance</Text>
-              <Text style={styles.infoValue}>
-                {numericBalance.toFixed(2)} XRP
-              </Text>
+              <Text style={styles.infoValue}>{numericBalance.toFixed(2)} XRP</Text>
             </View>
             {wallet && (
               <View style={styles.infoRow}>
@@ -203,32 +160,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                     gap: 8,
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.infoValue,
-                      styles.address,
-                      { flexShrink: 1 },
-                    ]}
-                    numberOfLines={1}
-                  >
+                  <Text style={[styles.infoValue, styles.address, { flexShrink: 1 }]} numberOfLines={1}>
                     {wallet.address}
                   </Text>
-                  <TouchableOpacity
-                    onPress={handleCopyAddress}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Ionicons
-                      name="copy-outline"
-                      size={16}
-                      color={colors.primary}
-                    />
+                  <TouchableOpacity onPress={handleCopyAddress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Ionicons name="copy-outline" size={16} color={colors.primary} />
                   </TouchableOpacity>
                 </View>
               </View>
             )}
-            {statusMessage && (
-              <Text style={styles.helper}>{statusMessage}</Text>
-            )}
+            {statusMessage && <Text style={styles.helper}>{statusMessage}</Text>}
           </View>
         </View>
 

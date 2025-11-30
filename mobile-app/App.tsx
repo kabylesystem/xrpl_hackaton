@@ -18,6 +18,7 @@ import { SMSPaymentScreen } from "./screens/SMSPaymentScreen";
 import { QRPaymentScreen } from "./screens/QRPaymentScreen";
 import { PaymentSuccessScreen } from "./screens/PaymentSuccessScreen";
 import SettingsScreen from "./screens/SettingsScreen";
+import SendPaymentScreen from "./screens/SendPaymentScreen";
 
 const Stack = createStackNavigator<any>();
 
@@ -44,6 +45,7 @@ const AppNavigator = () => {
           <Stack.Screen name="QRPayment" component={QRPaymentScreen} />
           <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="SendPayment" component={SendPaymentScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </>
