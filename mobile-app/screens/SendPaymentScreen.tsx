@@ -56,11 +56,8 @@ export default function SendPaymentScreen({ navigation }: SendPaymentScreenProps
       return;
     }
 
-    if (connected) {
-      setStep("confirm");
-    } else {
-      setStep("params");
-    }
+    // Always use offline flow (params step) regardless of connection status
+    setStep("params");
   };
 
   const handleRequestParams = async () => {
@@ -183,7 +180,7 @@ ${signedTxBlob}`;
   const renderParamsStep = () => (
     <ScrollView style={styles.stepContainer}>
       <Text style={styles.title}>Offline Mode</Text>
-      <Text style={styles.subtitle}>Since you are offline, we need the latest blockchain sequence and ledger index to sign the transaction.</Text>
+      <Text style={styles.subtitle}>We need the latest blockchain sequence and ledger index to sign the transaction.</Text>
 
       <TouchableOpacity style={styles.secondaryButton} onPress={handleRequestParams}>
         <Text style={styles.secondaryButtonText}>1. Request Params (SMS)</Text>
@@ -265,12 +262,8 @@ ${signedTxBlob}`;
         <TouchableOpacity
           onPress={() => {
             if (step === "confirm") {
-              // If we came from params (offline), go back to params. Else go to security.
-              // However, we can just check if offlineParams is set, but user might want to switch back.
-              // Simplest is: if offlineParams was required (connected=false), go back to params.
-              // But wait, if connected=true, we skipped params.
-              if (connected) setStep("security");
-              else setStep("params");
+              // Always go back to params since we always force offline flow
+              setStep("params");
             } else if (step === "params") setStep("security");
             else if (step === "security") setStep("amount");
             else navigation.goBack();

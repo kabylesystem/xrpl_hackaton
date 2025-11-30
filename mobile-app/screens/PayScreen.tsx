@@ -6,7 +6,10 @@ import { typography, spacing, borderRadius, shadows } from "../theme";
 import { Button } from "../components";
 import { useThemedColors } from "../context/ThemeContext";
 import { useWallet } from "../context/WalletContext";
+import { parseBlockchainParams, BlockchainParams } from "../utils/smsParser";
 import { SMS_GATEWAY_NUMBER } from "../constants";
+import * as SMS from "expo-sms";
+import { TextInput } from "react-native";
 
 interface PayScreenProps {
   navigation: any;
@@ -20,10 +23,15 @@ interface PaymentQRData {
 }
 
 export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
-  const { submitPayment, getSignedPayment, loading: walletLoading } = useWallet();
+  const { submitPayment, getSignedPayment, getSignedPaymentOffline, loading: walletLoading, wallet } = useWallet();
   const [scannedData, setScannedData] = useState<PaymentQRData | null>(null);
   const [processing, setProcessing] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
+
+  // Offline Flow
+  const [offlineParams, setOfflineParams] = useState<BlockchainParams | null>(null);
+  const [paramsInput, setParamsInput] = useState<string>("");
+  const [showParamsSection, setShowParamsSection] = useState(false);
 
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -61,6 +69,29 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
     // Fallback: XRPL URI (simple parser)
     if (data.startsWith("xrpl:") || data.startsWith("ripple:")) {
       // simplistic parsing logic could go here, but for now ignoring to avoid complexity
+    }
+  };
+
+  const handleParamsCheck = (text: string) => {
+    setParamsInput(text);
+    const params = parseBlockchainParams(text);
+    if (params) {
+      setOfflineParams(params);
+    } else {
+      setOfflineParams(null);
+    }
+  };
+
+  const handleRequestParams = async () => {
+    if (!wallet) {
+      Alert.alert("Error", "Please connect or import your wallet first.");
+      return;
+    }
+    const isAvailable = await SMS.isAvailableAsync();
+    if (isAvailable) {
+      await SMS.sendSMSAsync([SMS_GATEWAY_NUMBER], `PARAMS ${wallet.address}`);
+    } else {
+      Alert.alert("Error", "SMS is not available on this device");
     }
   };
 
@@ -103,12 +134,28 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
   const handlePaySMS = async () => {
     if (!scannedData) return;
 
+    // 1. Check if offline params are ready
+    if (!offlineParams) {
+      setShowParamsSection(true);
+      Alert.alert("Offline Mode", "Please request and enter network parameters to sign this transaction offline.");
+      return;
+    }
+
     setProcessing(true);
     try {
       const currency = isNativeXRP ? "XRP" : scannedData.tokenSymbol;
       const issuer = isNativeXRP ? undefined : scannedData.tokenAddress;
 
-      const signedBlob = await getSignedPayment(scannedData.walletAddress, scannedData.amountOfToken, currency, issuer);
+      // 2. Use offline signing with provided params
+      const signedBlob = await getSignedPaymentOffline(
+        scannedData.walletAddress,
+        scannedData.amountOfToken,
+        offlineParams.sequence,
+        offlineParams.ledgerIndex,
+        offlineParams.fee,
+        currency,
+        issuer
+      );
 
       const smsUrl = `sms:${SMS_GATEWAY_NUMBER}${Platform.OS === "ios" ? "&" : "?"}body=${encodeURIComponent(signedBlob)}`;
 
@@ -121,6 +168,9 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
             text: "Done",
             onPress: () => {
               setScannedData(null);
+              setOfflineParams(null);
+              setParamsInput("");
+              setShowParamsSection(false);
               navigation.goBack();
             },
           },
@@ -137,6 +187,9 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
 
   const resetScan = () => {
     setScannedData(null);
+    setOfflineParams(null);
+    setParamsInput("");
+    setShowParamsSection(false);
   };
 
   return (
@@ -186,6 +239,30 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
               {!isNativeXRP && <Text style={styles.issuer}>Issuer: {scannedData.tokenAddress}</Text>}
             </View>
 
+            {showParamsSection && (
+              <View style={styles.paramsContainer}>
+                <Text style={styles.paramsTitle}>Offline Payment Requirements</Text>
+                <Text style={styles.helper}>To pay offline, we need current network parameters.</Text>
+
+                <Button title="1. Request Params (SMS)" onPress={handleRequestParams} variant="secondary" style={{ marginVertical: 10 }} />
+
+                <TextInput
+                  style={styles.paramsInput}
+                  placeholder="2. Paste SMS Reply (SEQ:...)"
+                  value={paramsInput}
+                  onChangeText={handleParamsCheck}
+                  multiline
+                />
+
+                {offlineParams && (
+                  <View style={styles.validParams}>
+                    <Ionicons name="checkmark-circle" size={20} color="#27ae60" />
+                    <Text style={styles.validParamsText}>Params Valid</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
             <View style={styles.actions}>
               <Button
                 title="Pay via Internet (XRPL)"
@@ -198,7 +275,7 @@ export const PayScreen: React.FC<PayScreenProps> = ({ navigation }) => {
                 title="Pay via SMS"
                 variant="secondary"
                 onPress={handlePaySMS}
-                disabled={processing || walletLoading}
+                disabled={processing || walletLoading || (showParamsSection && !offlineParams)}
                 icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.textWhite} />}
               />
               <Button title="Cancel / Rescan" variant="outline" onPress={resetScan} disabled={processing} />
@@ -309,5 +386,40 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     actions: {
       gap: spacing.md,
+    },
+    paramsContainer: {
+      backgroundColor: colors.surface,
+      padding: spacing.md,
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    paramsTitle: {
+      ...typography.h3,
+      marginBottom: spacing.xs,
+      color: colors.textPrimary,
+    },
+    paramsInput: {
+      backgroundColor: colors.background,
+      padding: spacing.md,
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      minHeight: 60,
+      textAlignVertical: "top",
+      color: colors.textPrimary,
+      marginBottom: spacing.sm,
+    },
+    validParams: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: spacing.sm,
+      backgroundColor: "#e8f8f5",
+      borderRadius: borderRadius.sm,
+    },
+    validParamsText: {
+      marginLeft: spacing.sm,
+      color: "#27ae60",
+      fontWeight: "bold",
     },
   });

@@ -148,6 +148,25 @@ export const prepareAccountDelete = async (client: Client, wallet: Wallet, desti
   return await client.autofill(transaction);
 };
 
+export const prepareAccountDeleteOffline = (
+  wallet: Wallet,
+  destination: string,
+  sequence: number,
+  ledgerIndex: number,
+  fee: string
+): AccountDelete => {
+  const transaction: AccountDelete = {
+    TransactionType: "AccountDelete",
+    Account: wallet.address,
+    Destination: destination,
+    Sequence: sequence,
+    LastLedgerSequence: ledgerIndex + 200,
+    Fee: fee,
+  };
+
+  return transaction;
+};
+
 export const signTransaction = (wallet: Wallet, transaction: any): { tx_blob: string; hash: string } => {
   return wallet.sign(transaction);
 };

@@ -17,8 +17,9 @@ import * as SMS from "expo-sms";
 import { Wallet, AccountDelete } from "xrpl";
 
 import { useWallet } from "../context/WalletContext";
-import { prepareAccountDelete, signTransaction } from "../utils/xrpl";
+import { prepareAccountDelete, prepareAccountDeleteOffline, signTransaction } from "../utils/xrpl";
 import { decrypt } from "../utils/encryption";
+import { parseBlockchainParams, BlockchainParams } from "../utils/smsParser";
 import { SMS_GATEWAY_NUMBER } from "../constants";
 
 interface ClaimPaymentScreenProps {
@@ -30,8 +31,14 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
   const [loading, setLoading] = useState(false);
   const [manualInput, setManualInput] = useState("");
   const [parsedData, setParsedData] = useState<{ encryptedSeed: string; signedTx: string; amount?: string; hint?: string } | null>(null);
+
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [password, setPassword] = useState("");
+
+  // Offline Flow
+  const [offlineParams, setOfflineParams] = useState<BlockchainParams | null>(null);
+  const [paramsInput, setParamsInput] = useState<string>("");
+  const [showParamsSection, setShowParamsSection] = useState(false);
 
   const handleParseSMS = (text: string) => {
     try {
@@ -68,20 +75,57 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
     }
   };
 
+  const handleParamsCheck = (text: string) => {
+    setParamsInput(text);
+    const params = parseBlockchainParams(text);
+    if (params) {
+      setOfflineParams(params);
+    } else {
+      setOfflineParams(null);
+    }
+  };
+
+  const handleRequestParams = async () => {
+    if (!wallet) {
+      Alert.alert("Error", "Please connect or import your main wallet first.");
+      return;
+    }
+    const isAvailable = await SMS.isAvailableAsync();
+    if (isAvailable) {
+      await SMS.sendSMSAsync([SMS_GATEWAY_NUMBER], `PARAMS ${wallet.address}`);
+    } else {
+      Alert.alert("Error", "SMS is not available on this device");
+    }
+  };
+
   const initiateClaim = () => {
     if (!parsedData) return;
+
+    // Instead of opening modal directly, check if we need params
+    if (!offlineParams) {
+      setShowParamsSection(true);
+      Alert.alert("Offline Mode", "Please request and enter network parameters to claim this offline.");
+      return;
+    }
+
     setPassword("");
     setPasswordModalVisible(true);
   };
 
   const handleDecryptAndClaim = async () => {
-    if (!parsedData || !wallet || !client) {
+    if (!parsedData || !wallet) {
       Alert.alert("Error", "Please connect your wallet first");
       return;
     }
 
     if (!password) {
       Alert.alert("Error", "Please enter the password");
+      return;
+    }
+
+    if (!offlineParams) {
+      setPasswordModalVisible(false);
+      Alert.alert("Error", "Missing network parameters. Please request them via SMS.");
       return;
     }
 
@@ -108,26 +152,21 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
       // 3. Prepare AccountDelete transaction from temp wallet to user wallet
       let signedDeleteTx;
       try {
-        const preparedDelete = await prepareAccountDelete(client, tempWallet, wallet.address);
-        const signed = signTransaction(tempWallet, preparedDelete);
+        // Always use offline construction with provided params
+        // We use Sequence: 1 for the new temp wallet as it's the first transaction
+        const deleteTxJson = prepareAccountDeleteOffline(
+          tempWallet,
+          wallet.address,
+          1, // Sequence 1
+          offlineParams.ledgerIndex,
+          offlineParams.fee
+        );
+
+        const signed = signTransaction(tempWallet, deleteTxJson);
         signedDeleteTx = signed.tx_blob;
       } catch (err) {
-        console.log("Autofill failed, attempting manual construction assuming Sequence 1");
-
-        const ledger = await client.request({ command: "ledger", ledger_index: "validated" });
-        const fee = await client.request({ command: "fee" });
-
-        const deleteTxJson: AccountDelete = {
-          TransactionType: "AccountDelete",
-          Account: tempWallet.address,
-          Destination: wallet.address,
-          Sequence: 1, // First transaction for this account
-          Fee: fee.result.drops.base_fee,
-          LastLedgerSequence: ledger.result.ledger_index + 200,
-        };
-
-        const signed = tempWallet.sign(deleteTxJson);
-        signedDeleteTx = signed.tx_blob;
+        console.error("Failed to sign delete tx", err);
+        throw new Error("Failed to sign transaction");
       }
 
       // 4. Send SMS to gateway
@@ -195,11 +234,41 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
             <Text style={styles.pasteButtonText}>Check Content</Text>
           </TouchableOpacity>
         )}
+
+        {showParamsSection && (
+          <View style={styles.paramsContainer}>
+            <Text style={styles.paramsTitle}>Offline Claim Requirements</Text>
+            <Text style={styles.instruction}>To claim this offline, we need current network parameters.</Text>
+
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleRequestParams}>
+              <Text style={styles.secondaryButtonText}>1. Request Params (SMS)</Text>
+            </TouchableOpacity>
+
+            <TextInput
+              style={[styles.input, { height: 80, textAlignVertical: "top" }]}
+              placeholder="2. Paste SMS Reply (SEQ:...)"
+              value={paramsInput}
+              onChangeText={handleParamsCheck}
+              multiline
+            />
+
+            {offlineParams && (
+              <View style={styles.validParams}>
+                <Ionicons name="checkmark-circle" size={20} color="#27ae60" />
+                <Text style={styles.validParamsText}>Params Valid</Text>
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={[styles.claimButton, !parsedData && styles.disabledButton]} onPress={initiateClaim} disabled={!parsedData}>
-          <Text style={styles.claimButtonText}>Unlock & Claim</Text>
+        <TouchableOpacity
+          style={[styles.claimButton, (!parsedData || (showParamsSection && !offlineParams)) && styles.disabledButton]}
+          onPress={initiateClaim}
+          disabled={!parsedData || (showParamsSection && !offlineParams)}
+        >
+          <Text style={styles.claimButtonText}>{showParamsSection ? "Unlock & Claim" : "Continue to Claim"}</Text>
         </TouchableOpacity>
       </View>
 
@@ -396,5 +465,43 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 16,
+  },
+  paramsContainer: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  paramsTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#23292E",
+    marginBottom: 8,
+  },
+  secondaryButton: {
+    backgroundColor: "#3498db",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  secondaryButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  validParams: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: "#e8f8f5",
+    borderRadius: 8,
+  },
+  validParamsText: {
+    marginLeft: 8,
+    color: "#27ae60",
+    fontWeight: "bold",
   },
 });
