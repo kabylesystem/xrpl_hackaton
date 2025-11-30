@@ -172,8 +172,25 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
           signedDeleteTx = signed.tx_blob;
         } else if (client) {
           // Online fallback if available and not forced offline
-          const preparedDelete = await prepareAccountDelete(client, tempWallet, wallet.address);
-          const signed = signTransaction(tempWallet, preparedDelete);
+          // We cannot use prepareAccountDelete with autofill because the tempWallet account
+          // does not exist on the ledger yet (it will be created by the first transaction).
+          // So we manually fetch params and construct the transaction with Sequence 1.
+
+          const ledgerIndex = await client.getLedgerIndex();
+
+          // Get current fee
+          const feeResponse = await client.request({ command: "fee" });
+          const fee = feeResponse.result.drops.base_fee;
+
+          const deleteTxJson = prepareAccountDeleteOffline(
+            tempWallet,
+            wallet.address,
+            1, // Sequence 1 (first tx for new account)
+            ledgerIndex,
+            fee
+          );
+
+          const signed = signTransaction(tempWallet, deleteTxJson);
           signedDeleteTx = signed.tx_blob;
         } else {
           throw new Error("No connection and no params");
