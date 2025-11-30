@@ -94,6 +94,50 @@ app.post("/sms/receive", async (req: Request, res: Response): Promise<void> => {
 });
 
 // -------------------------------
+// ℹ️ Blockchain Params Handler
+// -------------------------------
+async function handleParamsRequest(from: string, address: string) {
+  console.log(`ℹ️ Params request for ${address}`);
+
+  const client = new xrpl.Client("wss://s.altnet.rippletest.net:51233");
+  await client.connect();
+
+  try {
+    // 1. Get Account Info (Sequence)
+    let sequence = 0;
+    try {
+      const accountInfo = await client.request({
+        command: "account_info",
+        account: address,
+        ledger_index: "validated",
+      });
+      sequence = accountInfo.result.account_data.Sequence;
+    } catch (e) {
+      // If account not found/funded
+      throw new Error("Account not found or unfunded");
+    }
+
+    // 2. Get Network Info (Fee, Ledger)
+    const feeResponse = await client.request({ command: "fee" });
+    const ledgerResponse = await client.request({ command: "ledger", ledger_index: "validated" });
+
+    const fee = feeResponse.result.drops.base_fee;
+    const ledgerIndex = ledgerResponse.result.ledger_index;
+
+    console.log(`✅ Retrieved: Seq ${sequence}, Ledger ${ledgerIndex}, Fee ${fee}`);
+
+    await twilioClient.messages.create({
+      from: process.env.TWILIO_PHONE_NUMBER!,
+      to: from,
+      body: `SEQ: ${sequence} | LEDGER: ${ledgerIndex} | FEE: ${fee}`,
+    });
+
+  } finally {
+    await client.disconnect();
+  }
+}
+
+// -------------------------------
 // 🔐 Signed Single Transaction Handler
 // -------------------------------
 async function handleSignedTransaction(from: string, body: string) {

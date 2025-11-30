@@ -1,24 +1,41 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Share, ActivityIndicator } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Share,
+  ActivityIndicator,
+  ScrollView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Wallet } from "xrpl";
+import * as SMS from "expo-sms";
 
 import { useWallet } from "../context/WalletContext";
 import { encrypt } from "../utils/encryption";
+import { parseBlockchainParams, BlockchainParams } from "../utils/smsParser";
+import { SMS_GATEWAY_NUMBER } from "../constants";
 
 interface SendPaymentScreenProps {
   navigation: any;
 }
 
-type Step = "amount" | "security" | "confirm";
+type Step = "amount" | "security" | "params" | "confirm";
 
 export default function SendPaymentScreen({ navigation }: SendPaymentScreenProps) {
-  const { getSignedPayment } = useWallet();
+  const { getSignedPayment, getSignedPaymentOffline, connected, wallet } = useWallet();
   const [step, setStep] = useState<Step>("amount");
   const [amount, setAmount] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [hint, setHint] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [offlineParams, setOfflineParams] = useState<BlockchainParams | null>(null);
+  const [paramsInput, setParamsInput] = useState<string>("");
 
   const handleNextToSecurity = () => {
     const amountNum = parseFloat(amount);
@@ -38,7 +55,33 @@ export default function SendPaymentScreen({ navigation }: SendPaymentScreenProps
       Alert.alert("Error", "Please provide a hint for the recipient");
       return;
     }
-    setStep("confirm");
+
+    if (connected) {
+      setStep("confirm");
+    } else {
+      setStep("params");
+    }
+  };
+
+  const handleRequestParams = async () => {
+    if (!wallet) return;
+    const isAvailable = await SMS.isAvailableAsync();
+    if (isAvailable) {
+      // Send "PARAMS <address>" to gateway
+      await SMS.sendSMSAsync([SMS_GATEWAY_NUMBER], `PARAMS ${wallet.address}`);
+    } else {
+      Alert.alert("Error", "SMS not available");
+    }
+  };
+
+  const handleParamsCheck = (text: string) => {
+    setParamsInput(text);
+    const params = parseBlockchainParams(text);
+    if (params) {
+      setOfflineParams(params);
+    } else {
+      setOfflineParams(null);
+    }
   };
 
   const handleShare = async () => {
@@ -52,7 +95,18 @@ export default function SendPaymentScreen({ navigation }: SendPaymentScreenProps
 
       // 3. Generate the signed tx to send the money but not submiting it yet
       // We are sending TO the temp wallet address
-      const signedTxBlob = await getSignedPayment(tempWallet.address, amount);
+      let signedTxBlob;
+      if (offlineParams) {
+        signedTxBlob = await getSignedPaymentOffline(
+          tempWallet.address,
+          amount,
+          offlineParams.sequence,
+          offlineParams.ledgerIndex,
+          offlineParams.fee
+        );
+      } else {
+        signedTxBlob = await getSignedPayment(tempWallet.address, amount);
+      }
 
       // 4. Send the encrypted key along with the signed tx to the contact
       const message = `Here is ${amount} XRP.
@@ -126,6 +180,48 @@ ${signedTxBlob}`;
     </View>
   );
 
+  const renderParamsStep = () => (
+    <ScrollView style={styles.stepContainer}>
+      <Text style={styles.title}>Offline Mode</Text>
+      <Text style={styles.subtitle}>Since you are offline, we need the latest blockchain sequence and ledger index to sign the transaction.</Text>
+
+      <TouchableOpacity style={styles.secondaryButton} onPress={handleRequestParams}>
+        <Text style={styles.secondaryButtonText}>1. Request Params (SMS)</Text>
+      </TouchableOpacity>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>2. Paste Reply SMS</Text>
+        <TextInput
+          style={[styles.input, { height: 100, textAlignVertical: "top" }]}
+          placeholder="Paste SMS here (e.g. SEQ: 123...)"
+          value={paramsInput}
+          onChangeText={handleParamsCheck}
+          multiline
+        />
+      </View>
+
+      {offlineParams && (
+        <View style={styles.successCard}>
+          <Ionicons name="checkmark-circle" size={32} color="#27ae60" />
+          <View style={{ marginLeft: 10 }}>
+            <Text style={styles.successText}>Valid Parameters Found</Text>
+            <Text style={styles.subText}>
+              Seq: {offlineParams.sequence} • Ledger: {offlineParams.ledgerIndex}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      <TouchableOpacity
+        style={[styles.primaryButton, !offlineParams && styles.disabledButton]}
+        onPress={() => setStep("confirm")}
+        disabled={!offlineParams}
+      >
+        <Text style={styles.primaryButtonText}>Continue</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+
   const renderConfirmStep = () => (
     <View style={styles.stepContainer}>
       <Text style={styles.title}>Confirm Payment</Text>
@@ -139,6 +235,11 @@ ${signedTxBlob}`;
         <Text style={styles.confirmLabel}>Security:</Text>
         <Text style={styles.confirmValue}>Password Protected</Text>
         <Text style={styles.confirmSubValue}>Hint: "{hint}"</Text>
+
+        <View style={styles.divider} />
+
+        <Text style={styles.confirmLabel}>Mode:</Text>
+        <Text style={styles.confirmValue}>{offlineParams ? "Offline (SMS)" : "Online (XRPL)"}</Text>
 
         <View style={styles.divider} />
 
@@ -163,7 +264,14 @@ ${signedTxBlob}`;
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            if (step === "confirm") setStep("security");
+            if (step === "confirm") {
+              // If we came from params (offline), go back to params. Else go to security.
+              // However, we can just check if offlineParams is set, but user might want to switch back.
+              // Simplest is: if offlineParams was required (connected=false), go back to params.
+              // But wait, if connected=true, we skipped params.
+              if (connected) setStep("security");
+              else setStep("params");
+            } else if (step === "params") setStep("security");
             else if (step === "security") setStep("amount");
             else navigation.goBack();
           }}
@@ -174,6 +282,7 @@ ${signedTxBlob}`;
 
       {step === "amount" && renderAmountStep()}
       {step === "security" && renderSecurityStep()}
+      {step === "params" && renderParamsStep()}
       {step === "confirm" && renderConfirmStep()}
     </KeyboardAvoidingView>
   );
@@ -275,5 +384,40 @@ const styles = StyleSheet.create({
     color: "#444",
     textAlign: "center",
     lineHeight: 20,
+  },
+  secondaryButton: {
+    backgroundColor: "#3498db",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  secondaryButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  successCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#e8f8f5",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#27ae60",
+    marginVertical: 10,
+  },
+  successText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#27ae60",
+  },
+  subText: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 2,
+  },
+  disabledButton: {
+    backgroundColor: "#a5d6a7",
   },
 });

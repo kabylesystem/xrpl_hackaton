@@ -8,6 +8,7 @@ import {
   getBalance,
   sendPayment,
   preparePayment,
+  preparePaymentOffline,
   signTransaction,
 } from '../utils/xrpl';
 
@@ -24,6 +25,7 @@ interface WalletContextValue {
   refreshBalance: (targetWallet?: Wallet) => Promise<void>;
   submitPayment: (destination: string, amount: string, currency?: string, issuer?: string) => Promise<string>;
   getSignedPayment: (destination: string, amount: string, currency?: string, issuer?: string) => Promise<string>;
+  getSignedPaymentOffline: (destination: string, amount: string, sequence: number, ledgerIndex: number, fee: string, currency?: string, issuer?: string) => Promise<string>;
   importWallet: (seed: string) => Promise<void>;
 }
 
@@ -165,6 +167,29 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const getSignedPaymentOffline = async (
+    destination: string,
+    amount: string,
+    sequence: number,
+    ledgerIndex: number,
+    fee: string,
+    currency: string = 'XRP',
+    issuer?: string
+  ) => {
+    if (!wallet) {
+      throw new Error('Create or import a wallet first');
+    }
+
+    setLoading(true);
+    try {
+      const prepared = preparePaymentOffline(wallet, destination, amount, sequence, ledgerIndex, fee, currency, issuer);
+      const signed = signTransaction(wallet, prepared);
+      return signed.tx_blob;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const importWallet = async (seed: string) => {
     if (loading) return;
 
@@ -206,6 +231,7 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       refreshBalance,
       submitPayment,
       getSignedPayment,
+      getSignedPaymentOffline,
       importWallet,
     }),
     [client, wallet, connected, balance, rate, statusMessage, loading]

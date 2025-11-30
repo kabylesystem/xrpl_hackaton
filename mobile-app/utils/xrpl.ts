@@ -103,6 +103,41 @@ export const preparePayment = async (
   return await client.autofill(payment);
 };
 
+export const preparePaymentOffline = (
+  wallet: Wallet,
+  destination: string,
+  amount: string,
+  sequence: number,
+  ledgerIndex: number,
+  fee: string,
+  currency: string = "XRP",
+  issuer?: string
+): Payment => {
+  let paymentAmount: any;
+
+  if (currency === "XRP") {
+    paymentAmount = xrpToDrops(amount);
+  } else {
+    paymentAmount = {
+      currency,
+      value: amount,
+      issuer,
+    };
+  }
+
+  const payment: Payment = {
+    TransactionType: "Payment",
+    Account: wallet.address,
+    Destination: destination,
+    Amount: paymentAmount,
+    Sequence: sequence,
+    LastLedgerSequence: ledgerIndex + 200, // Allow some buffer
+    Fee: fee,
+  };
+
+  return payment;
+};
+
 export const prepareAccountDelete = async (client: Client, wallet: Wallet, destination: string): Promise<AccountDelete> => {
   const transaction: AccountDelete = {
     TransactionType: "AccountDelete",
