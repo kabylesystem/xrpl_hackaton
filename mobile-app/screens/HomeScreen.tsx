@@ -1,9 +1,9 @@
-import React, { useMemo } from "react";
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert } from "react-native";
+import React, { useMemo, useState } from "react";
+import { ScrollView, View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, TextInput, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { useWallet } from "../context/WalletContext";
-import { WalletCard, TransactionListItem } from "../components";
+import { WalletCard, TransactionListItem, Button } from "../components";
 import { typography, spacing, borderRadius, shadows } from "../theme";
 import { useThemedColors } from "../context/ThemeContext";
 import { useSettings } from "../context/SettingsContext";
@@ -37,10 +37,67 @@ const sampleTransactions = [
 ];
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const { wallet, balance, rate, connected, statusMessage, refreshBalance } = useWallet();
+  const { wallet, balance, rate, connected, statusMessage, refreshBalance, importWallet, setupWallet } = useWallet();
   const { settings } = useSettings();
   const colors = useThemedColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const [importSeed, setImportSeed] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const handleImport = async () => {
+    if (!importSeed.trim()) return;
+    setIsImporting(true);
+    try {
+      await importWallet(importSeed.trim());
+      setImportSeed("");
+      Alert.alert("Success", "Wallet imported successfully");
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Invalid seed or failed to import");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleRegenerateWallet = async () => {
+    Alert.alert(
+      "Regenerate Wallet",
+      "This will replace your current wallet with a new one. Make sure you have backed up your current seed if you want to keep it. Continue?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Yes, Create New",
+          style: "destructive",
+          onPress: async () => {
+            setIsRegenerating(true);
+            try {
+              await setupWallet();
+              Alert.alert("Success", "New wallet created and funded!");
+            } catch (e) {
+              console.error(e);
+              Alert.alert("Error", "Failed to create new wallet");
+            } finally {
+              setIsRegenerating(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCopySeed = async () => {
+    if (wallet?.seed) {
+      await Clipboard.setStringAsync(wallet.seed);
+      Alert.alert("Success", "Seed copied to clipboard");
+      setShowExportModal(false);
+    }
+  };
+
   const quickActions = [
     {
       label: "Pay",
@@ -149,25 +206,64 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               <Text style={styles.infoValue}>{numericBalance.toFixed(2)} XRP</Text>
             </View>
             {wallet && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Address</Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    flex: 1,
-                    justifyContent: "flex-end",
-                    gap: 8,
-                  }}
-                >
-                  <Text style={[styles.infoValue, styles.address, { flexShrink: 1 }]} numberOfLines={1}>
-                    {wallet.address}
-                  </Text>
-                  <TouchableOpacity onPress={handleCopyAddress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Ionicons name="copy-outline" size={16} color={colors.primary} />
-                  </TouchableOpacity>
+              <>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Address</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      flex: 1,
+                      justifyContent: "flex-end",
+                      gap: 8,
+                    }}
+                  >
+                    <Text style={[styles.infoValue, styles.address, { flexShrink: 1 }]} numberOfLines={1}>
+                      {wallet.address}
+                    </Text>
+                    <TouchableOpacity onPress={handleCopyAddress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Ionicons name="copy-outline" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
+                <View style={styles.divider} />
+                <View style={styles.importContainer}>
+                  <Text style={styles.importLabel}>Import Wallet (Seed)</Text>
+                  <View style={styles.inputRow}>
+                    <TextInput
+                      style={styles.input}
+                      value={importSeed}
+                      onChangeText={setImportSeed}
+                      placeholder="sEd..."
+                      placeholderTextColor={colors.textTertiary}
+                      secureTextEntry
+                      autoCapitalize="none"
+                    />
+                    <View style={{ width: 100 }}>
+                      <Button title="Import" onPress={handleImport} loading={isImporting} size="small" disabled={!importSeed} />
+                    </View>
+                  </View>
+                </View>
+                <View style={{ marginTop: spacing.sm }}>
+                  <Button
+                    title="Export Wallet (Show Seed)"
+                    onPress={() => setShowExportModal(true)}
+                    variant="outline"
+                    size="small"
+                    icon={<Ionicons name="key-outline" size={16} color={colors.primary} />}
+                  />
+                </View>
+                <View style={{ marginTop: spacing.sm }}>
+                  <Button
+                    title="Regenerate & Fund New Wallet"
+                    onPress={handleRegenerateWallet}
+                    loading={isRegenerating}
+                    variant="secondary"
+                    size="small"
+                    icon={<Ionicons name="refresh-circle-outline" size={16} color={colors.textWhite} />}
+                  />
+                </View>
+              </>
             )}
             {statusMessage && <Text style={styles.helper}>{statusMessage}</Text>}
           </View>
@@ -194,6 +290,24 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </View>
         </View>
       </ScrollView>
+
+      <Modal visible={showExportModal} transparent animationType="fade" onRequestClose={() => setShowExportModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Wallet Seed</Text>
+            <Text style={styles.modalSubtitle}>Keep this secret! Anyone with this key can access your funds.</Text>
+            <View style={styles.seedContainer}>
+              <Text style={styles.seedText} selectable>
+                {wallet?.seed}
+              </Text>
+            </View>
+            <View style={styles.modalButtons}>
+              <Button title="Copy to Clipboard" onPress={handleCopySeed} variant="primary" style={{ flex: 1 }} />
+              <Button title="Close" onPress={() => setShowExportModal(false)} variant="outline" style={{ flex: 1 }} />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -319,5 +433,77 @@ const createStyles = (colors: ReturnType<typeof useThemedColors>) =>
     },
     listStack: {
       gap: spacing.sm,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: spacing.sm,
+    },
+    importContainer: {
+      gap: spacing.xs,
+    },
+    importLabel: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    inputRow: {
+      flexDirection: "row",
+      gap: spacing.sm,
+      alignItems: "center",
+    },
+    input: {
+      flex: 1,
+      backgroundColor: colors.background,
+      borderRadius: borderRadius.md,
+      paddingHorizontal: spacing.md,
+      height: 44,
+      color: colors.textPrimary,
+      fontSize: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: spacing.lg,
+    },
+    modalContent: {
+      width: "100%",
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.xl,
+      padding: spacing.xl,
+      gap: spacing.md,
+      ...shadows.lg,
+    },
+    modalTitle: {
+      ...typography.h2,
+      color: colors.textPrimary,
+      textAlign: "center",
+    },
+    modalSubtitle: {
+      ...typography.body,
+      color: colors.textSecondary,
+      textAlign: "center",
+      marginBottom: spacing.xs,
+    },
+    seedContainer: {
+      backgroundColor: colors.background,
+      padding: spacing.md,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+    },
+    seedText: {
+      ...typography.bodyBold,
+      color: colors.textPrimary,
+      textAlign: "center",
+    },
+    modalButtons: {
+      flexDirection: "row",
+      gap: spacing.md,
+      marginTop: spacing.sm,
     },
   });

@@ -111,7 +111,7 @@ async function handleSignedTransaction(from: string, body: string) {
       await twilioClient.messages.create({
         from: process.env.TWILIO_PHONE_NUMBER!,
         to: from,
-        body: `Payment confirmed! TX: ${hash.slice(0, 12)}`,
+        body: `Payment confirmed! View on Explorer: https://testnet.xrpl.org/transactions/${hash}`,
       });
     } else {
       throw new Error(`Broadcast failed: ${result.result.engine_result}`);
@@ -167,11 +167,14 @@ async function handleClaimTransaction(from: string, body: string) {
     }
     console.log("✅ TX 2 Confirmed");
 
+    const hash1 = result1.result.hash;
+    const hash2 = result2.result.hash;
+
     // Success Message
     await twilioClient.messages.create({
       from: process.env.TWILIO_PHONE_NUMBER!,
       to: from,
-      body: `Claim Successful! Funds swept to your wallet.`,
+      body: `Claim Successful! Funds swept to your wallet.\n\nTX1: ${hash1}\nLink: https://testnet.xrpl.org/transactions/${hash1}\n\nTX2: ${hash2}\nLink: https://testnet.xrpl.org/transactions/${hash2}`,
     });
   } finally {
     await client.disconnect();
