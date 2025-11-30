@@ -11,6 +11,7 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as SMS from "expo-sms";
@@ -204,14 +205,19 @@ export default function ClaimPaymentScreen({ navigation }: ClaimPaymentScreenPro
       // 4. Send SMS to gateway
       const gatewayMessage = `${parsedData.signedTx}|${signedDeleteTx}`;
 
-      const isAvailable = await SMS.isAvailableAsync();
-      if (isAvailable) {
-        const { result } = await SMS.sendSMSAsync([SMS_GATEWAY_NUMBER], gatewayMessage);
-        if (result === "sent" || result === "unknown") {
-          Alert.alert("Success", "Claim request sent to gateway!", [{ text: "OK", onPress: () => navigation.navigate("Home") }]);
-        }
+      const smsUrl = `sms:${SMS_GATEWAY_NUMBER}${Platform.OS === "ios" ? "&" : "?"}body=${encodeURIComponent(gatewayMessage)}`;
+
+      const canOpen = await Linking.canOpenURL(smsUrl);
+      if (canOpen) {
+        await Linking.openURL(smsUrl);
+        Alert.alert("SMS Opened", "Please send the SMS to complete the claim.", [
+          {
+            text: "Done",
+            onPress: () => navigation.navigate("Home"),
+          },
+        ]);
       } else {
-        Alert.alert("Error", "SMS is not available on this device");
+        Alert.alert("Error", "Cannot open SMS app");
       }
     } catch (error: any) {
       Alert.alert("Error", "Failed to process claim: " + error.message);
